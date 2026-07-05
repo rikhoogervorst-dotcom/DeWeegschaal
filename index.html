@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>De Weegschaal — Warcraft Logs Vergelijker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0a07;
+  --panel:#171310;
+  --panel2:#1f1a13;
+  --line:#4a3a1c;
+  --goldline:#8a6d2f;
+  --text:#e8dfc8;
+  --muted:#a3947a;
+  --gold:#e5cc80;      /* parse 100 */
+  --pink:#e268a8;      /* 99 */
+  --orange:#ff8000;    /* 95+ */
+  --purple:#a335ee;    /* 75+ */
+  --blue:#0091ff;      /* 50+ */
+  --green:#1eff00;     /* 25+ */
+  --grey:#8a8a8a;      /* <25 */
+  --danger:#ff6b5c;
+  --blood:#7a1010;
+  --blood2:#4a0808;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 50% -100px, rgba(229,204,128,.07), transparent 60%),
+    radial-gradient(ellipse at 50% 120%, rgba(122,16,16,.10), transparent 55%),
+    var(--bg);
+  color:var(--text);font-family:"Source Sans 3",system-ui,sans-serif;line-height:1.5;min-height:100vh
+}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 80px}
+
+header{margin-bottom:26px;text-align:center}
+h1{font-family:Cinzel,serif;font-weight:800;font-size:clamp(28px,4.5vw,44px);letter-spacing:.08em;
+  background:linear-gradient(180deg,#f6e7b2 0%,#e5cc80 45%,#9c7c33 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.8))}
+h1::before{content:"⚔ "}h1::after{content:" ⚔"}
+h1::before,h1::after{-webkit-text-fill-color:#8a6d2f;font-size:.6em;vertical-align:middle}
+.sub{color:var(--muted);max-width:640px;margin:8px auto 0;font-style:italic}
+
+h2{font-family:Cinzel,serif;font-weight:600;font-size:19px;letter-spacing:.08em;color:var(--gold);margin-bottom:12px;text-shadow:0 1px 2px #000}
+h2::after{content:"";display:block;height:1px;margin-top:8px;background:linear-gradient(90deg,var(--goldline),transparent)}
+
+/* WoW-frame panelen: dubbele gouden rand met donkere kern */
+section{
+  position:relative;background:linear-gradient(180deg,var(--panel) 0%,#120e0a 100%);
+  border:1px solid var(--goldline);border-radius:6px;padding:22px;margin-bottom:22px;
+  box-shadow:inset 0 0 0 1px #000, inset 0 0 0 2px #3a2d13, 0 4px 18px rgba(0,0,0,.6);
+}
+section::before,section::after{content:"◆";position:absolute;top:-9px;color:var(--gold);font-size:12px;text-shadow:0 0 4px #000}
+section::before{left:14px}
+section::after{right:14px}
+
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px;letter-spacing:.03em}
+input[type=text],input[type=password]{width:100%;background:#0c0a07;border:1px solid var(--line);border-radius:4px;color:var(--text);padding:9px 11px;font-size:14px;font-family:inherit;box-shadow:inset 0 2px 4px rgba(0,0,0,.6)}
+input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:transparent}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>div{flex:1;min-width:200px}
+
+/* Stormwind-rode knoppen met gouden rand */
+button{
+  background:linear-gradient(180deg,#9c1f14 0%,var(--blood) 45%,var(--blood2) 100%);
+  color:#ffe9b0;border:1px solid var(--goldline);border-radius:5px;padding:10px 20px;
+  font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;letter-spacing:.03em;
+  text-shadow:0 1px 2px #000;box-shadow:inset 0 1px 0 rgba(255,220,150,.25), 0 2px 6px rgba(0,0,0,.5)
+}
+button:hover{filter:brightness(1.2)}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.secondary{background:linear-gradient(180deg,#2a2318,#171310);color:var(--gold)}
+button:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.6)}
+.mt{margin-top:12px}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+.hint a{color:#7ec4ff}
+.hint code{background:#0c0a07;padding:1px 5px;border-radius:4px;font-size:12px;border:1px solid var(--line)}
+details.help{margin-top:10px;font-size:13px;color:var(--muted)}
+details.help summary{cursor:pointer;color:#7ec4ff}
+details.help pre{background:#0c0a07;border:1px solid var(--line);border-radius:6px;padding:10px;margin-top:8px;overflow:auto;font-size:12px;white-space:pre-wrap}
+
+.status{font-size:13px;margin-top:8px}
+.status.ok{color:var(--green)}
+.status.err{color:var(--danger)}
+
+.loglist{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.logitem{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:9px 12px;font-size:14px}
+.logitem::before{content:"📜"}
+.logitem .code{color:var(--muted);font-size:12px}
+.logitem .tag{margin-left:auto;font-size:12px}
+.logitem button{padding:4px 10px;font-size:12px}
+.loginfo{display:flex;flex-direction:column;gap:1px;flex:1 1 auto;min-width:0}
+.loginfo strong{line-height:1.2}
+.logmeta{font-size:12px;color:var(--muted);line-height:1.25}
+.logmeta.err{color:var(--danger)}
+
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{background:linear-gradient(180deg,#2a2318,#171310);color:var(--muted);border:1px solid var(--line)}
+.tabs button.active{background:linear-gradient(180deg,#9c1f14,var(--blood2));color:#ffe9b0;border-color:var(--goldline)}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{color:var(--gold);text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--goldline);font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-family:Cinzel,serif}
+td{padding:8px 10px;border-bottom:1px solid #2a2213;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:rgba(229,204,128,.04)}
+.fast{color:var(--gold);font-weight:700;text-shadow:0 0 8px rgba(229,204,128,.4)}
+.fast::after{content:" ⚡"}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.small{font-size:12px;color:var(--muted)}
+.scroll{overflow-x:auto}
+
+.reportcard{border:1px solid var(--line);border-radius:6px;padding:14px;background:var(--panel2);margin-bottom:14px}
+.meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:8px}
+.meta b{color:var(--text)}
+
+.pbarwrap{position:relative;background:#080604;border:1px solid #2a2213;border-radius:3px;height:16px;min-width:140px}
+.pbar{height:100%;border-radius:2px;box-shadow:0 0 6px rgba(0,0,0,.5) inset}
+.pmark{position:absolute;top:-4px;width:2px;height:24px;background:#fff;opacity:.9;box-shadow:0 0 4px #000}
+.pval{font-weight:700;font-variant-numeric:tabular-nums}
+.delta.pos{color:var(--green)}
+.delta.neg{color:var(--danger)}
+
+.tips{margin-top:6px;font-size:13px;color:var(--muted)}
+.tips li{margin-left:18px;margin-bottom:3px}
+.tips li::marker{content:"❯ ";color:var(--goldline)}
+.playerblock{border-bottom:1px solid #2a2213;padding:12px 0}
+.playerblock:last-child{border-bottom:0}
+.pname{font-weight:700;font-size:15px;text-shadow:0 1px 2px #000}
+.pnamelink{text-decoration:none;cursor:pointer}
+.pnamelink:hover{text-decoration:underline}
+.pnamelink .ext{font-size:.72em;opacity:.6;vertical-align:super}
+.prole{font-size:12px;color:var(--muted);margin-left:8px}
+
+/* Perkamentrol voor de samenvatting */
+.summarybox{
+  background:linear-gradient(180deg,#efe3c0 0%,#e3d3a6 60%,#d8c48f 100%);
+  color:#3a2a12;border:1px solid #9c7c33;border-radius:4px;padding:20px 22px;
+  white-space:pre-wrap;font-size:14.5px;margin-bottom:12px;
+  font-family:Georgia,'Times New Roman',serif;
+  box-shadow:inset 0 0 30px rgba(120,90,30,.35), 0 4px 14px rgba(0,0,0,.6);
+  position:relative
+}
+.summarybox::before,.summarybox::after{content:"";position:absolute;left:0;right:0;height:10px;background:repeating-linear-gradient(90deg,#b99a55 0 8px,#a5874a 8px 16px);border-radius:4px}
+.summarybox::before{top:-5px}
+.summarybox::after{bottom:-5px}
+.empty{color:var(--muted);font-size:14px;padding:20px;text-align:center;font-style:italic}
+.empty::before{content:"💤 "}
+select{background:#0c0a07;border:1px solid var(--line);color:var(--text);border-radius:4px;padding:8px 10px;font-size:14px;font-family:inherit}
+
+/* Eigen guild-markering */
+button.mine{padding:4px 10px;font-size:12px;background:linear-gradient(180deg,#2a2318,#171310);color:var(--muted);border:1px solid var(--line)}
+button.mine.on{background:linear-gradient(180deg,#5a4a1c,#2e2510);color:var(--gold);border-color:var(--goldline);text-shadow:0 0 6px rgba(229,204,128,.5)}
+.minehdr{color:var(--gold)}
+.minehdr::before{content:"★ "}
+
+/* Adviesblokken */
+.advies-alg{border:1px solid var(--goldline);border-radius:6px;background:linear-gradient(180deg,#221b10,#171310);padding:16px 18px;margin-bottom:18px;box-shadow:inset 0 0 0 1px #000}
+.advies-alg h3, .bossblock h3{font-family:Cinzel,serif;font-weight:600;font-size:15px;letter-spacing:.06em;color:var(--gold);margin-bottom:8px}
+.bossblock{border:1px solid var(--line);border-radius:6px;background:var(--panel2);padding:14px 16px;margin-bottom:12px}
+.bossblock .bstats{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:6px}
+.bossblock .bstats b{color:var(--text)}
+.badge{display:inline-block;font-size:11px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted);margin-left:8px;vertical-align:middle}
+.badge.goed{color:var(--green);border-color:#1a4a10}
+.badge.let{color:#ffcf5c;border-color:#5a4a1c}
+.badge.zorg{color:var(--danger);border-color:#5a1c1c}
+details.pdetail{margin-top:6px;font-size:13px}
+details.pdetail summary{cursor:pointer;color:#7ec4ff}
+details.pdetail table{margin-top:8px;font-size:13px}
+@media (prefers-reduced-motion:no-preference){
+  section{animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1}}
+}
+
+/* Signatuur rechtsonderin */
+.credit{position:fixed;right:14px;bottom:10px;z-index:60;font-family:Cinzel,serif;font-size:12px;letter-spacing:.05em;color:var(--muted);opacity:.8;pointer-events:none;text-shadow:0 1px 3px #000}
+.credit b{color:var(--gold);font-weight:600}
+.credit .realm{color:var(--goldline)}
+.credit::before{content:"⚔ ";color:var(--goldline);font-size:.9em}
+@media (max-width:520px){ .credit{font-size:11px;right:10px;bottom:8px;opacity:.7} }
+
+/* Taalschakelaar rechtsboven */
+.langflag{position:fixed;top:12px;right:14px;z-index:70;background:var(--panel2);border:1px solid var(--goldline);border-radius:6px;padding:5px 10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);font-family:'Source Sans 3',system-ui,sans-serif;letter-spacing:.02em;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.langflag:hover{border-color:var(--gold)}
+@media (max-width:520px){ .langflag{top:8px;right:10px;padding:4px 8px;font-size:13px} }
+</style>
+</head>
+<body>
+<button id="langToggle" class="langflag" title="Switch to English">🇳🇱 NL</button>
+<div class="wrap">
+
+<header>
+  <h1>De Weegschaal</h1>
+  <p class="sub" data-en="Put your own guild's logs — and everyone else's — on the scales. Compare raid and boss times (with dates), average parses and absolute DPS/HPS, view each player's parses across every raid side by side — healing parses for healers — plus deaths, avoidable damage and concrete improvement points per player and per boss, and finish with a tongue-in-cheek tavern report for your Discord.">Leg de logs van je eigen guild én die van anderen op de weegschaal. Vergelijk raid- en boss-tijden (met datum), gemiddelde parses en absolute DPS/HPS, bekijk per speler de parses van elke raid naast elkaar — voor healers de healing-parses — plus deaths, vermijdbare schade en concrete verbeterpunten per speler en per boss, en sluit af met een ludiek taveerneverslag voor in de Discord.</p>
+</header>
+
+<!-- STAP 1: API -->
+<section id="apiSection">
+  <h2 data-en="I · Connect to Warcraft Logs">I · Verbind met Warcraft Logs</h2>
+  <p class="hint" data-en-html='Create a free API client once at <a href="https://www.warcraftlogs.com/api/clients/" target="_blank" rel="noopener">warcraftlogs.com/api/clients</a> (the name doesn&#39;t matter, the redirect URL can be <code>https://localhost</code>). Paste your Client ID and Secret below.'>Maak eenmalig een gratis API-client aan op <a href="https://www.warcraftlogs.com/api/clients/" target="_blank" rel="noopener">warcraftlogs.com/api/clients</a> (naam maakt niet uit, redirect-URL mag <code>https://localhost</code> zijn). Plak hieronder je Client ID en Secret.</p>
+  <p class="hint" style="color:#ffcf5c;border:1px solid #5a4a1c;border-radius:5px;background:#221b10;padding:9px 12px;margin-top:8px" data-en-html='⚠ <b>Important:</b> when creating the client, leave the <b>“Public Client”</b> checkbox <b>OFF</b>. A public client uses a different login method (without a secret), which makes connecting below fail. Ticked it by accident? Create a new client with the box unticked.'>⚠ <b>Belangrijk:</b> laat bij het aanmaken het vinkje <b>“Public Client”</b> <b>UIT</b>. Een public client gebruikt een andere inlogmethode (zonder secret) en dan mislukt het verbinden hieronder. Staat het vinkje per ongeluk aan? Maak dan een nieuwe client aan met het vinkje uit.</p>
+  <div class="row mt">
+    <div><label for="cid">Client ID</label><input type="text" id="cid" autocomplete="off"></div>
+    <div><label for="csec">Client Secret</label><input type="password" id="csec" autocomplete="off"></div>
+  </div>
+  <div class="mt row" style="align-items:center">
+    <button id="btnToken" data-en="🔑 Connect">🔑 Verbinden</button>
+    <label style="margin:0;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="chkRemember" checked style="accent-color:var(--gold)"><span data-en=" Remember my details and raid list in this browser"> Onthoud mijn gegevens en raidlijst in deze browser</span></label>
+    <button class="secondary" id="btnForget" style="display:none" data-en="🗑 Forget details">🗑 Vergeet gegevens</button>
+  </div>
+  <div class="status" id="tokenStatus"></div>
+  <div id="rateBar" style="display:none;margin-top:10px"></div>
+  <details class="help">
+    <summary data-en="Can't connect? Paste a token yourself">Verbinden lukt niet? Plak dan zelf een token</summary>
+    <p class="mt" data-en-html="Some browsers block the token request. In that case, fetch a token yourself from the terminal and paste the result (the <code>access_token</code> value) below:">Sommige browsers blokkeren de token-aanvraag. Haal dan zelf een token op via de terminal en plak het resultaat (de <code>access_token</code>-waarde) hieronder:</p>
+    <pre>curl -u JOUW_CLIENT_ID:JOUW_SECRET -d grant_type=client_credentials https://www.warcraftlogs.com/oauth/token</pre>
+    <div class="row mt">
+      <div><label for="rawToken">Access token</label><input type="password" id="rawToken"></div>
+    </div>
+    <div class="mt"><button class="secondary" id="btnRawToken" data-en="Use token">Token gebruiken</button></div>
+  </details>
+</section>
+
+<!-- STAP 2: LOGS -->
+<section>
+  <h2 data-en="II · Gather the battle reports">II · Verzamel de strijdverslagen</h2>
+  <div class="row">
+    <div style="flex:2"><label for="logUrl">Warcraft Logs URL</label><input type="text" id="logUrl" placeholder="https://www.warcraftlogs.com/reports/AbC123xYz..."></div>
+    <div><label for="logLabel" data-en="Label (e.g. guild name)">Label (bijv. guildnaam)</label><input type="text" id="logLabel" placeholder="Onze guild" data-en-ph="Our guild"></div>
+  </div>
+  <div class="mt row" style="align-items:center">
+    <button id="btnAdd" data-en="📜 Add log">📜 Log toevoegen</button>
+    <button class="secondary" id="btnAnalyse" disabled data-en="⚔ Analyse all">⚔ Analyseer alles</button>
+    <button class="secondary" id="btnRefresh" disabled title="Negeer opgeslagen resultaten en haal alles opnieuw op (bijv. na nieuwe pulls tijdens een live raid)" data-en="🔄 Refresh" data-en-title="Ignore cached results and fetch everything again (e.g. after new pulls during a live raid)">🔄 Ververs</button>
+    <span class="status" id="logStatus"></span>
+  </div>
+  <div class="loglist" id="logList"></div>
+</section>
+
+<!-- RESULTATEN -->
+<section id="results" style="display:none">
+  <h2 data-en="III · The verdict">III · Het oordeel</h2>
+  <div class="tabs">
+    <button data-tab="overzicht" class="active" data-en="⏱ Raid &amp; boss times">⏱ Raid &amp; boss-tijden</button>
+    <button data-tab="spelers" data-en="🛡 Players &amp; improvements">🛡 Spelers &amp; verbeterpunten</button>
+    <button data-tab="parses" data-en="📊 Parses">📊 Parses</button>
+    <button data-tab="advies" data-en="🧭 Battle plan &amp; advice">🧭 Strijdplan &amp; advies</button>
+    <button data-tab="verhaal" data-en="🍺 Tavern report">🍺 Taveerneverslag</button>
+  </div>
+  <div id="tab-overzicht"></div>
+  <div id="tab-spelers" style="display:none"></div>
+  <div id="tab-parses" style="display:none"></div>
+  <div id="tab-advies" style="display:none"></div>
+  <div id="tab-verhaal" style="display:none"></div>
+</section>
+
+</div>
+
+<div class="credit">Made by <b>Evenstars</b> <span class="realm">(Thunderstrike)</span> · v1.7</div>
+
+<script>
+"use strict";
+/* ============ state (analysedata alleen in geheugen; API-gegevens optioneel in localStorage) ============ */
+const state = { token:null, logs:[], analysed:[], mineCode:null, rate:null, reportCache:{}, lastGoodHost:null, lang:"nl" };
+/* ============ meertaligheid (NL/EN) ============ */
+const L = (nl, en) => state.lang==="en" ? en : nl;
+const DLOC = () => state.lang==="en" ? "en-GB" : "nl-NL";
+const unk = x => x==="Onbekend" ? L("Onbekend","Unknown") : x;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const CLASS_COLORS={DeathKnight:"#C41E3A",DemonHunter:"#A330C9",Druid:"#FF7C0A",Evoker:"#33937F",Hunter:"#AAD372",Mage:"#3FC7EB",Monk:"#00FF98",Paladin:"#F48CBA",Priest:"#F0EBE0",Rogue:"#FFF468",Shaman:"#0070DD",Warlock:"#8788EE",Warrior:"#C69B6D"};
+function classColor(cls){ return CLASS_COLORS[String(cls||"").replace(/\s/g,"")] || "var(--text)"; }
+
+/* ============ parse-kleuren zoals op WCL ============ */
+function parseColor(p){
+  if(p>=100) return "var(--gold)";
+  if(p>=99)  return "var(--pink)";
+  if(p>=95)  return "var(--orange)";
+  if(p>=75)  return "var(--purple)";
+  if(p>=50)  return "var(--blue)";
+  if(p>=25)  return "var(--green)";
+  return "var(--grey)";
+}
+function fmtDur(ms){
+  const s = Math.round(ms/1000);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if(h>0) return `${h}${L("u","h")} ${String(m).padStart(2,"0")}m`;
+  return `${m}:${String(sec).padStart(2,"0")}`;
+}
+function fmtClock(ms){
+  const s = Math.round(ms/1000);
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+}
+function fmtDate(ms){
+  if(ms==null) return "";
+  return new Date(ms).toLocaleDateString(DLOC(),{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+}
+const DIFF = {1:"LFR",2:"Flex",3:"Normal",4:"Heroic",5:"Mythic"};
+
+/* ============ stap 1: token ============ */
+/* Gegevens onthouden (alleen lokaal in deze browser, via localStorage) */
+const CRED_KEY = "wcl-raid-analyse:credentials";
+const LOGS_KEY = "wcl-raid-analyse:logs";
+const LANG_KEY = "wcl-raid-analyse:lang";
+function saveCreds(id, sec){
+  if(!$("chkRemember").checked) return;
+  try{ localStorage.setItem(CRED_KEY, JSON.stringify({id, sec})); updateForgetBtn(); }catch{}
+}
+function loadCreds(){
+  try{
+    const raw = localStorage.getItem(CRED_KEY);
+    if(!raw) return;
+    const c = JSON.parse(raw);
+    if(c.id) $("cid").value = c.id;
+    if(c.sec) $("csec").value = c.sec;
+    if(c.id || c.sec){
+      $("tokenStatus").textContent = L("Opgeslagen gegevens ingevuld — klik op Verbinden.","Saved details filled in — click Connect.");
+      $("tokenStatus").className = "status";
+    }
+  }catch{}
+  updateForgetBtn();
+}
+function forgetCreds(){
+  try{ localStorage.removeItem(CRED_KEY); localStorage.removeItem(LOGS_KEY); }catch{}
+  $("cid").value=""; $("csec").value="";
+  state.logs=[]; state.mineCode=null;
+  renderLogList(); updateAnalyseBtn();
+  $("tokenStatus").textContent=L("Opgeslagen gegevens en raidlijst verwijderd uit deze browser.","Saved details and raid list removed from this browser.");
+  $("tokenStatus").className="status";
+  updateForgetBtn();
+}
+function updateForgetBtn(){
+  let has=false; try{ has = !!(localStorage.getItem(CRED_KEY) || localStorage.getItem(LOGS_KEY)); }catch{}
+  $("btnForget").style.display = has ? "" : "none";
+}
+/* Toegevoegde raids onthouden in deze browser (alleen als 'onthouden' aanstaat) */
+function saveLogs(){
+  try{
+    if(!$("chkRemember").checked){ localStorage.removeItem(LOGS_KEY); updateForgetBtn(); return; }
+    const clean = state.logs.map(l=>({code:l.code, label:l.label, host:l.host||null, meta:l.meta||null}));
+    localStorage.setItem(LOGS_KEY, JSON.stringify({logs:clean, mineCode:state.mineCode}));
+    updateForgetBtn();
+  }catch{}
+}
+function loadLogs(){
+  try{
+    const raw = localStorage.getItem(LOGS_KEY);
+    if(!raw) return;
+    const d = JSON.parse(raw);
+    if(Array.isArray(d.logs)) state.logs = d.logs.filter(l=>l && l.code).map(l=>({code:l.code, label:l.label||l.code, host:l.host||null, meta:l.meta||null}));
+    if(d.mineCode && state.logs.some(l=>l.code===d.mineCode)) state.mineCode = d.mineCode;
+    if(state.logs.length){
+      renderLogList(); updateAnalyseBtn();
+      $("logStatus").textContent = L(`${state.logs.length} eerder toegevoegde raid${state.logs.length===1?"":"s"} onthouden — verbind met Warcraft Logs en klik op Analyseer alles.`,`${state.logs.length} previously added raid${state.logs.length===1?"":"s"} remembered — connect to Warcraft Logs and click Analyse all.`);
+      $("logStatus").className = "status";
+    }
+  }catch{}
+}
+$("btnForget").addEventListener("click", forgetCreds);
+$("chkRemember").addEventListener("change", ()=>{
+  if(!$("chkRemember").checked){
+    try{ localStorage.removeItem(CRED_KEY); localStorage.removeItem(LOGS_KEY); }catch{}
+    updateForgetBtn();
+  } else {
+    saveLogs(); // huidige raidlijst alsnog bewaren
+  }
+});
+
+/* ============ taal toepassen & wisselen ============ */
+function applyStaticLang(){
+  document.querySelectorAll("[data-en]").forEach(el=>{
+    if(el.dataset.nl==null) el.dataset.nl = el.textContent;
+    el.textContent = state.lang==="en" ? el.dataset.en : el.dataset.nl;
+  });
+  document.querySelectorAll("[data-en-html]").forEach(el=>{
+    if(el.dataset.nlHtml==null) el.dataset.nlHtml = el.innerHTML;
+    el.innerHTML = state.lang==="en" ? el.dataset.enHtml : el.dataset.nlHtml;
+  });
+  document.querySelectorAll("[data-en-ph]").forEach(el=>{
+    if(el.dataset.nlPh==null) el.dataset.nlPh = el.getAttribute("placeholder")||"";
+    el.setAttribute("placeholder", state.lang==="en" ? el.dataset.enPh : el.dataset.nlPh);
+  });
+  document.querySelectorAll("[data-en-title]").forEach(el=>{
+    if(el.dataset.nlTitle==null) el.dataset.nlTitle = el.getAttribute("title")||"";
+    el.setAttribute("title", state.lang==="en" ? el.dataset.enTitle : el.dataset.nlTitle);
+  });
+  document.documentElement.lang = state.lang;
+}
+function setLang(lang){
+  state.lang = (lang==="en") ? "en" : "nl";
+  try{ localStorage.setItem(LANG_KEY, state.lang); }catch{}
+  const b=$("langToggle");
+  if(b){
+    b.textContent = state.lang==="en" ? "🇬🇧 EN" : "🇳🇱 NL";
+    b.title = state.lang==="en" ? "Wissel naar Nederlands" : "Switch to English";
+  }
+  applyStaticLang();
+  renderLogList();
+  if(state.rate) updateRateDisplay(state.rate);
+  if(state.analysed && state.analysed.length) renderAll();
+}
+(function initLang(){
+  let saved="nl"; try{ saved = localStorage.getItem(LANG_KEY) || "nl"; }catch{}
+  setLang(saved);
+})();
+$("langToggle").addEventListener("click", ()=> setLang(state.lang==="en" ? "nl" : "en"));
+loadCreds();
+loadLogs();
+
+$("btnToken").addEventListener("click", async ()=>{
+  const id=$("cid").value.trim(), sec=$("csec").value.trim();
+  const st=$("tokenStatus");
+  if(!id||!sec){ st.textContent=L("Vul Client ID en Secret in.","Enter Client ID and Secret."); st.className="status err"; return; }
+  st.textContent=L("Token ophalen…","Fetching token…"); st.className="status";
+  try{
+    const r = await fetch("https://www.warcraftlogs.com/oauth/token",{
+      method:"POST",
+      headers:{ "Authorization":"Basic "+btoa(id+":"+sec), "Content-Type":"application/x-www-form-urlencoded" },
+      body:"grant_type=client_credentials"
+    });
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j = await r.json();
+    if(!j.access_token) throw new Error(L("Geen token in antwoord","No token in response"));
+    saveCreds(id, sec);
+    setToken(j.access_token);
+  }catch(e){
+    st.textContent=L("Verbinden mislukt ("+e.message+"). Gebruik de handmatige token-optie hieronder.","Connection failed ("+e.message+"). Use the manual token option below.");
+    st.className="status err";
+  }
+});
+$("btnRawToken").addEventListener("click", ()=>{
+  const t=$("rawToken").value.trim();
+  if(t) setToken(t);
+});
+function cleanToken(raw){
+  let t = String(raw||"").trim();
+  // Hele JSON-respons geplakt? Haal access_token eruit.
+  const m = t.match(/"access_token"\s*:\s*"([^"]+)"/);
+  if(m) t = m[1];
+  t = t.replace(/^Bearer\s+/i,"").replace(/["'\s]/g,"");
+  return t;
+}
+async function setToken(t){
+  state.token = cleanToken(t);
+  const st=$("tokenStatus");
+  st.textContent=L("Verbinding testen…","Testing connection…"); st.className="status";
+  updateAnalyseBtn();
+  try{
+    await gql("www","{ rateLimitData { limitPerHour pointsSpentThisHour pointsResetIn } }",{});
+    st.textContent=L("✓ Verbonden — token werkt","✓ Connected — token works");
+    st.className="status ok";
+    loadAllMissingMeta();
+  }catch(e){
+    st.textContent=L("Token geaccepteerd maar de test-query faalde: "+e.message+" — controleer of je alléén de access_token-waarde hebt geplakt.","Token accepted but the test query failed: "+e.message+" — check that you pasted only the access_token value.");
+    st.className="status err";
+  }
+}
+
+/* ============ stap 2: logs beheren ============ */
+$("btnAdd").addEventListener("click", ()=>{
+  const url=$("logUrl").value.trim();
+  const label=$("logLabel").value.trim() || "Log "+(state.logs.length+1);
+  const m = url.match(/reports\/([A-Za-z0-9]+:)?([A-Za-z0-9]+)/);
+  const st=$("logStatus");
+  if(!m){ st.textContent=L("Geen geldige Warcraft Logs-URL.","Not a valid Warcraft Logs URL."); st.className="status err"; return; }
+  const code=(m[1]||"")+m[2];
+  if(state.logs.some(l=>l.code===code)){ st.textContent=L("Deze log staat er al in.","This log is already in the list."); st.className="status err"; return; }
+  // server-subdomein uit de URL afleiden (www/classic/fresh/vanilla) → snellere, gerichtere calls
+  const hm = url.match(/https?:\/\/([a-z0-9-]+)\.warcraftlogs\.com/i);
+  const detected = hm ? hm[1].toLowerCase() : null;
+  const host = (detected && WCL_HOSTS.includes(detected)) ? detected : null;
+  const newLog = {code,label,host};
+  state.logs.push(newLog);
+  $("logUrl").value=""; $("logLabel").value="";
+  st.textContent=""; renderLogList(); updateAnalyseBtn(); saveLogs();
+  if(state.token) loadLogMeta(newLog);
+  else { st.textContent=L("Toegevoegd — verbind in stap I om titel & datum te laden.","Added — connect in step I to load title & date."); st.className="status"; }
+});
+function renderLogList(){
+  const metaLine = l => {
+    if(l.meta){
+      const parts=[];
+      if(l.meta.start!=null) parts.push(esc(fmtDate(l.meta.start)));
+      if(l.meta.zone) parts.push(esc(l.meta.zone));
+      if(l.meta.title && l.meta.title!==l.label) parts.push(esc(l.meta.title));
+      return parts.length ? `<span class="logmeta">${parts.join(" · ")}</span>` : "";
+    }
+    if(l.metaLoading) return `<span class="logmeta">⏳ ${L("titel &amp; datum laden…","loading title &amp; date…")}</span>`;
+    if(l.metaError)   return `<span class="logmeta err">${L("details niet gevonden — is de log openbaar?","details not found — is the log public?")}</span>`;
+    if(!state.token)  return `<span class="logmeta">${L("verbind in stap I om titel &amp; datum te tonen","connect in step I to show title &amp; date")}</span>`;
+    return "";
+  };
+  $("logList").innerHTML = state.logs.map((l,i)=>`
+    <div class="logitem">
+      <div class="loginfo">
+        <strong>${esc(l.label)}</strong>
+        ${metaLine(l)}
+      </div>
+      <span class="code">${esc(l.code)}</span>
+      <button class="mine${state.mineCode===l.code?" on":""}" data-mine="${i}" title="${L('Markeer als jouw guild — deze log wordt overal standaard geselecteerd','Mark as your guild — this log is selected by default everywhere')}">${state.mineCode===l.code?L("★ Mijn guild","★ My guild"):L("☆ Mijn guild","☆ My guild")}</button>
+      <button class="secondary" data-del="${i}">${L("Verwijder","Remove")}</button>
+    </div>`).join("");
+  document.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",e=>{
+    const l = state.logs[+e.target.dataset.del];
+    if(l && state.mineCode===l.code) state.mineCode=null;
+    state.logs.splice(+e.target.dataset.del,1); renderLogList(); updateAnalyseBtn(); saveLogs();
+  }));
+  document.querySelectorAll("[data-mine]").forEach(b=>b.addEventListener("click",e=>{
+    const l = state.logs[+e.currentTarget.dataset.mine];
+    state.mineCode = state.mineCode===l.code ? null : l.code;
+    renderLogList(); saveLogs();
+    if(state.analysed.length) renderAll();
+  }));
+}
+function mineIndex(){
+  const i = state.analysed.findIndex(r=>r.code===state.mineCode);
+  return i>=0 ? i : 0;
+}
+function updateAnalyseBtn(){
+  const on = !!(state.token && state.logs.length>0);
+  $("btnAnalyse").disabled = !on;
+  const rb = $("btnRefresh"); if(rb) rb.disabled = !on;
+}
+
+/* ============ stap 3: ophalen & analyseren ============ */
+async function analyseAll(){
+  const st=$("logStatus"); st.className="status"; state.analysed=[];
+  for(const log of state.logs){
+    st.textContent=L(`⏳ "${log.label}" wordt geplunderd…`,`⏳ Plundering "${log.label}"…`);
+    try{
+      const data = await fetchReport(log.code, log.host);
+      state.analysed.push(processReport(log, data));
+    }catch(e){
+      st.textContent=L(`Fout bij "${log.label}": ${e.message}`,`Error on "${log.label}": ${e.message}`);
+      st.className="status err";
+      return;
+    }
+  }
+  st.textContent=L("✓ Alle strijdverslagen geanalyseerd — moge de loot met je zijn","✓ All battle reports analysed — may the loot be with you"); st.className="status ok";
+  $("results").style.display="block";
+  renderAll();
+  refreshRateLimit();
+  $("results").scrollIntoView({behavior:"smooth"});
+}
+$("btnAnalyse").addEventListener("click", analyseAll);
+$("btnRefresh").addEventListener("click", ()=>{
+  state.reportCache = {};   // opgeslagen resultaten weggooien → verse data ophalen
+  analyseAll();
+});
+
+const WCL_HOSTS = ["www","classic","fresh","vanilla"];
+
+// Probeervolgorde: eerst de host uit de log-URL, dan de laatst-werkende, dan de rest.
+// Scheelt veel verspilde calls (en dus rate-limit-punten) bij onbekende logs.
+function hostsToTry(preferred){
+  const order=[], seen=new Set();
+  [preferred, state.lastGoodHost, ...WCL_HOSTS].forEach(h=>{ if(h && !seen.has(h)){ seen.add(h); order.push(h); } });
+  return order;
+}
+
+async function gql(host, query, variables){
+  const r = await fetch(`https://${host}.warcraftlogs.com/api/v2/client`,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+state.token },
+    body: JSON.stringify({query, variables})
+  });
+  if(r.status===401) throw new Error(L("token verlopen of ongeldig — verbind opnieuw","token expired or invalid — reconnect"));
+  if(!r.ok){
+    let detail=""; try{ const t=await r.text(); detail=t.replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().slice(0,120); }catch{}
+    throw new Error("HTTP "+r.status+(detail?" — "+detail:""));
+  }
+  const j = await r.json();
+  if(j.errors?.length) throw new Error(j.errors[0].message);
+  if(j.data && j.data.rateLimitData) updateRateDisplay(j.data.rateLimitData);
+  return j.data;
+}
+
+/* ============ rate-limit-weergave ============ */
+function fmtPts(n){ n=Math.round(n); return n>=1000 ? (n/1000).toFixed(n>=10000?0:1)+"k" : String(n); }
+function fmtAmount(n){
+  if(n==null) return "—";
+  if(n>=1e6) return (n/1e6).toFixed(2)+"M";
+  if(n>=1e4) return Math.round(n/1e3)+"k";
+  if(n>=1e3) return (n/1e3).toFixed(1)+"k";
+  return String(Math.round(n));
+}
+function updateRateDisplay(rd){
+  if(!rd || rd.limitPerHour==null) return;
+  state.rate = rd;
+  const el = $("rateBar"); if(!el) return;
+  const lim  = rd.limitPerHour || 3600;
+  const used = Math.max(0, rd.pointsSpentThisHour || 0);
+  const pct  = Math.min(100, 100*used/lim);
+  const col  = pct>=90 ? "var(--danger)" : pct>=70 ? "#ffcf5c" : "var(--green)";
+  const reset = rd.pointsResetIn!=null ? L(` · reset over ${Math.max(1,Math.ceil(rd.pointsResetIn/60))} min`,` · resets in ${Math.max(1,Math.ceil(rd.pointsResetIn/60))} min`) : "";
+  el.style.display = "block";
+  el.innerHTML =
+    `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:4px;letter-spacing:.03em">`+
+      `<span>${L("API-verbruik dit uur","API usage this hour")}</span>`+
+      `<span style="color:${col};font-weight:600">${fmtPts(used)} / ${fmtPts(lim)} ${L("punten","points")}${reset}</span>`+
+    `</div>`+
+    `<div style="height:7px;border-radius:4px;background:#0c0a07;border:1px solid var(--line);overflow:hidden">`+
+      `<div style="height:100%;width:${pct.toFixed(1)}%;background:${col};transition:width .3s"></div>`+
+    `</div>`+
+    (pct>=90 ? `<div class="small" style="color:var(--danger);margin-top:4px">${L("Bijna op — nieuwe analyses kunnen falen tot de reset. Wacht even of analyseer minder logs tegelijk.","Almost out — new analyses may fail until reset. Wait a bit or analyse fewer logs at once.")}</div>` : "");
+}
+async function refreshRateLimit(){
+  if(!state.token) return;
+  try{ await gql("www","{ rateLimitData { limitPerHour pointsSpentThisHour pointsResetIn } }",{}); }catch{}
+}
+
+/* Titel + raiddatum van een toegevoegde log ophalen (lichte query, probeert alle servers) */
+async function fetchLogMeta(code, preferred){
+  const q = `query($code:String!){ reportData{ report(code:$code){ title startTime zone{ name } } } }`;
+  for(const h of hostsToTry(preferred)){
+    try{
+      const d = await gql(h, q, {code});
+      const rep = d?.reportData?.report;
+      if(rep){ state.lastGoodHost = h; return { title: rep.title||null, start: rep.startTime ?? null, zone: rep.zone?.name || null }; }
+    }catch(e){ /* volgende server proberen */ }
+  }
+  return null;
+}
+async function loadLogMeta(log){
+  if(!state.token || !log || log.meta || log.metaLoading) return;
+  log.metaLoading = true; log.metaError = false; renderLogList();
+  const meta = await fetchLogMeta(log.code, log.host).catch(()=>null);
+  log.metaLoading = false;
+  if(meta){ log.meta = meta; saveLogs(); } else { log.metaError = true; }
+  renderLogList();
+}
+function loadAllMissingMeta(){
+  if(!state.token) return;
+  state.logs.forEach(l=>{ if(!l.meta && !l.metaLoading) loadLogMeta(l); });
+}
+
+async function fetchReport(code, preferred){
+  if(state.reportCache[code]) return state.reportCache[code];
+  const fullQuery = `query($code:String!){
+    reportData{ report(code:$code){
+      title startTime endTime
+      zone{ name }
+      masterData{ actors(type:"Player"){ id name subType } }
+      fights(killType:Encounters){ id name kill difficulty startTime endTime bossPercentage averageItemLevel friendlyPlayers }
+    }}
+  }`;
+  const baseQuery = `query($code:String!){
+    reportData{ report(code:$code){
+      title startTime endTime
+      zone{ name }
+      masterData{ actors(type:"Player"){ id name subType } }
+      fights(killType:Encounters){ id name kill difficulty startTime endTime friendlyPlayers }
+    }}
+  }`;
+  // Stap 1: basisgegevens — probeer alle servers (retail, classic, fresh, era)
+  const minimalQuery = `query($code:String!){
+    reportData{ report(code:$code){
+      title startTime endTime
+      zone{ name }
+      fights{ id name kill difficulty startTime endTime }
+    }}
+  }`;
+  let rep=null, host=null, lastErr=null;
+  for(const h of hostsToTry(preferred)){
+    for(const q of [fullQuery, baseQuery, minimalQuery]){
+      try{
+        const d = await gql(h, q, {code});
+        const found = d?.reportData?.report;
+        if(found){ rep=found; host=h; break; }
+      }catch(e){ lastErr=e; }
+    }
+    if(rep) break;
+  }
+  if(!rep) throw new Error((lastErr ? lastErr.message : L("rapport niet gevonden","report not found"))+L(` [code: ${code}, alle WCL-servers geprobeerd — is de log openbaar?]`,` [code: ${code}, tried all WCL servers — is the log public?]`));
+  state.lastGoodHost = host;
+  rep.foundHost = host;
+  rep.warnings = [];
+  if(host!=="www") rep.warnings.push(L(`Log gevonden op de ${host==="classic"?"Classic":host==="fresh"?"Fresh":"Classic Era"}-server`,`Log found on the ${host==="classic"?"Classic":host==="fresh"?"Fresh":"Classic Era"} server`));
+
+  // Stap 2 & 3: rankings apart ophalen — optioneel, mag falen
+  for(const metric of ["dps","hps"]){
+    try{
+      const d = await gql(host, `query($code:String!){
+        reportData{ report(code:$code){ rankings(playerMetric:${metric}) } }
+      }`, {code});
+      rep[metric] = d?.reportData?.report?.rankings ?? null;
+    }catch(e){
+      rep[metric] = null;
+      rep.warnings.push(L(`${metric.toUpperCase()}-rankings konden niet worden opgehaald (${e.message})`,`${metric.toUpperCase()} rankings could not be fetched (${e.message})`));
+    }
+  }
+
+  // Stap 4: detailtabellen voor diepere analyse — optioneel, mag falen
+  const dur = (rep.endTime - rep.startTime) || 1;
+  const tableNames = { deathsTable:"Deaths", castsTable:"Casts", buffsTable:"Buffs", dtakenTable:"DamageTaken" };
+  for(const [key, dt] of Object.entries(tableNames)){
+    try{
+      const d = await gql(host, `query($code:String!){
+        reportData{ report(code:$code){ table(dataType:${dt}, startTime:0, endTime:${dur}, killType:Encounters) } }
+      }`, {code});
+      rep[key] = d?.reportData?.report?.table ?? null;
+    }catch(e){
+      rep[key] = null;
+      rep.warnings.push(L(`${dt}-tabel kon niet worden opgehaald (${e.message})`,`Could not fetch the ${dt} table (${e.message})`));
+    }
+  }
+  state.reportCache[code] = rep;
+  return rep;
+}
+
+function processReport(log, rep){
+  const fights = (rep.fights||[]).filter(f=>f.name && f.name!=="Unknown");
+  const kills = fights.filter(f=>f.kill);
+  const wipesByBoss = {};
+  fights.filter(f=>!f.kill).forEach(f=>{ wipesByBoss[f.name]=(wipesByBoss[f.name]||0)+1; });
+
+  // rankings uitpluizen: healers uit hps, rest uit dps
+  const players = {}; // name -> {class, role, ilvls[], ranks[], brackets[], perBoss[]}
+  function ingest(rankJson, wantRoles){
+    const data = (typeof rankJson==="string" ? JSON.parse(rankJson) : rankJson)?.data || [];
+    for(const f of data){
+      const bossName = f.encounter?.name || "Onbekend";
+      const roles = f.roles || {};
+      for(const roleKey of wantRoles){
+        const chars = roles[roleKey]?.characters || [];
+        for(const c of chars){
+          if(c.rankPercent==null) continue;
+          const key = c.name;
+          // niet mengen over rollen/metrics: een healer die ook dps'te houdt zijn healing-parse
+          if(players[key] && players[key].role !== roleKey) continue;
+          if(!players[key]) players[key]={name:c.name, cls:c.class||"", role:roleKey, ilvls:[], ranks:[], brackets:[], perBoss:[]};
+          players[key].ranks.push(c.rankPercent);
+          if(c.bracketPercent!=null) players[key].brackets.push(c.bracketPercent);
+          if(c.bracketData!=null) players[key].ilvls.push(c.bracketData);
+          players[key].perBoss.push({boss:bossName, rank:c.rankPercent, bracket:c.bracketPercent, amount:c.amount});
+        }
+      }
+    }
+  }
+  ingest(rep.hps, ["healers"]);
+  ingest(rep.dps, ["tanks","dps"]);
+
+  /* ---- deaths per speler (uit de Deaths-tabel) ---- */
+  const tbl = t => (t && (t.data||t)) || null;
+  const deathData = tbl(rep.deathsTable);
+  const deaths = { available:false, total:0, byPlayer:{}, byBoss:{}, topAbility:null };
+  if(deathData && Array.isArray(deathData.entries)){
+    deaths.available = true;
+    const abilityCount = {};
+    for(const e of deathData.entries){
+      if(!e.name) continue;
+      deaths.total++;
+      const dp = deaths.byPlayer[e.name] || (deaths.byPlayer[e.name]={name:e.name, cls:e.type||"", count:0, byAbility:{}, byBoss:{}});
+      dp.count++;
+      const ab = e.ability?.name || "Onbekend";
+      dp.byAbility[ab]=(dp.byAbility[ab]||0)+1;
+      abilityCount[ab]=(abilityCount[ab]||0)+1;
+      // koppel death aan boss via tijdstip (voor het advies per boss)
+      if(e.deathTime!=null){
+        const f = fights.find(f=>e.deathTime>=f.startTime && e.deathTime<=f.endTime);
+        if(f){ dp.byBoss[f.name]=(dp.byBoss[f.name]||0)+1; deaths.byBoss[f.name]=(deaths.byBoss[f.name]||0)+1; }
+      }
+    }
+    const top = Object.entries(abilityCount).sort((a,b)=>b[1]-a[1])[0];
+    if(top && top[0]!=="Onbekend") deaths.topAbility = {name:top[0], count:top[1]};
+  }
+
+  /* ---- activiteit per speler (casts per minuut, uit de Casts-tabel) ---- */
+  const castData = tbl(rep.castsTable);
+  const activity = { available:false, byPlayer:{}, medianByRole:{} };
+  if(castData && Array.isArray(castData.entries) && castData.totalTime>0){
+    activity.available = true;
+    const min = castData.totalTime/60000;
+    castData.entries.forEach(e=>{ if(e.name && e.total!=null) activity.byPlayer[e.name]= e.total/min; });
+  }
+
+  /* ---- consumables & lust (raid-breed, uit de Buffs-tabel) ---- */
+  const buffData = tbl(rep.buffsTable);
+  const consumables = { available:false };
+  if(buffData && Array.isArray(buffData.entries) && buffData.totalTime>0){
+    consumables.available = true;
+    const playerCount = Math.max(Object.keys(activity.byPlayer).length, Object.keys(players).length, 1);
+    const cap = buffData.totalTime * playerCount; // max mogelijke uptime over alle spelers
+    const sumUp = re => buffData.entries.filter(e=>re.test(e.name||"")).reduce((s,e)=>s+(e.totalUptime||0),0);
+    const sumUses = re => buffData.entries.filter(e=>re.test(e.name||"")).reduce((s,e)=>s+(e.totalUses||0),0);
+    consumables.flaskCov = Math.min(100, 100*sumUp(/flask|phial/i)/cap);
+    consumables.foodCov  = Math.min(100, 100*sumUp(/well fed/i)/cap);
+    consumables.potionUses = sumUses(/potion/i);
+    consumables.lustUses = sumUses(/bloodlust|heroism|time warp|fury of the aspects|primal rage|drums of/i);
+    consumables.playerCount = playerCount;
+  }
+
+  /* ---- damage taken / vermijdbare schade (uit de DamageTaken-tabel) ---- */
+  const dtData = tbl(rep.dtakenTable);
+  const dtaken = { available:false, byPlayer:{}, medianNonTank:null };
+  if(dtData && Array.isArray(dtData.entries) && dtData.totalTime>0){
+    dtaken.available = true;
+    const min = dtData.totalTime/60000;
+    dtData.entries.forEach(e=>{
+      if(!e.name) return;
+      const total = e.total || 0;
+      const byAbility = {};
+      (e.abilities||[]).forEach(a=>{ if(a && a.name) byAbility[a.name] = (byAbility[a.name]||0) + (a.total||0); });
+      dtaken.byPlayer[e.name] = { total, perMin: total/min, byAbility };
+    });
+  }
+
+  // naam → actor-id (voor directe link naar de speler in deze log op Warcraft Logs)
+  const actorMap = {};
+  (rep.masterData?.actors||[]).forEach(a=>{ if(a && a.name) actorMap[a.name] = a.id; });
+
+  const plist = Object.values(players).map(p=>{
+    const avg = a=>a.length? a.reduce((x,y)=>x+y,0)/a.length : null;
+    const sd = a=>{ if(a.length<2) return 0; const m=avg(a); return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length); };
+    // per-boss samenvatting: gemiddelde parse per boss (soms meerdere pulls per boss)
+    const bossMap = {};
+    p.perBoss.forEach(pb=>{
+      if(!bossMap[pb.boss]) bossMap[pb.boss]={boss:pb.boss, ranks:[], amounts:[]};
+      bossMap[pb.boss].ranks.push(pb.rank);
+      if(pb.amount!=null) bossMap[pb.boss].amounts.push(pb.amount);
+    });
+    const bossAvgs = Object.values(bossMap).map(b=>({
+      boss:b.boss, rank:avg(b.ranks), amount:avg(b.amounts)
+    })).sort((a,b)=>a.rank-b.rank);
+    const allAmounts = p.perBoss.map(x=>x.amount).filter(x=>x!=null);
+    const d = deaths.byPlayer[p.name] || null;
+    const dt = dtaken.byPlayer[p.name] || null;
+    return {...p,
+      avgRank:avg(p.ranks), avgIlvl:avg(p.ilvls),
+      avgAmount: allAmounts.length? avg(allAmounts) : null,
+      metricLabel: p.role==="healers" ? "HPS" : "DPS",
+      best:Math.max(...p.ranks), worst:Math.min(...p.ranks), spread:sd(p.ranks),
+      bossAvgs,
+      deaths: d? d.count : (deaths.available? 0 : null),
+      deathsByAbility: d? d.byAbility : {},
+      deathsByBoss: d? d.byBoss : {},
+      cpm: activity.byPlayer[p.name] ?? null,
+      dtPerMin: dt? dt.perMin : null,
+      dtTotal: dt? dt.total : null,
+      dtByAbility: dt? dt.byAbility : {},
+      actorId: actorMap[p.name] ?? null
+    };
+  }).sort((a,b)=>(b.avgRank??0)-(a.avgRank??0));
+
+  // mediaan casts/min per rol (voor activiteits-vergelijking)
+  if(activity.available){
+    const med = a=>{ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length/2)]; };
+    for(const role of ["dps","healers","tanks"]){
+      activity.medianByRole[role] = med(plist.filter(p=>p.role===role && p.cpm!=null).map(p=>p.cpm));
+    }
+  }
+
+  // mediaan damage-taken/min bij niet-tanks (tanks horen schade te eten en vertekenen de referentie)
+  if(dtaken.available){
+    const med = a=>{ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length/2)]; };
+    dtaken.medianNonTank = med(plist.filter(p=>p.role!=="tanks" && p.dtPerMin!=null).map(p=>p.dtPerMin));
+  }
+
+  // per-boss raidstatistieken (voor het boss-advies)
+  const bossStats = kills.map(f=>{
+    const name=f.name;
+    const perPlayer = plist
+      .map(p=>{ const b=p.bossAvgs.find(x=>x.boss===name); return b?{name:p.name, cls:p.cls, role:p.role, rank:b.rank}:null; })
+      .filter(Boolean).sort((a,b)=>a.rank-b.rank);
+    const avgParse = perPlayer.length? perPlayer.reduce((s,x)=>s+x.rank,0)/perPlayer.length : null;
+    // top-sterfoorzaak op deze boss
+    const abOnBoss = {};
+    Object.values(deaths.byPlayer).forEach(dp=>{
+      if(dp.byBoss[name]){
+        Object.entries(dp.byAbility).forEach(([ab,c])=>{ abOnBoss[ab]=(abOnBoss[ab]||0)+c; });
+      }
+    });
+    return { name, dur:f.endTime-f.startTime, diff:DIFF[f.difficulty]||"",
+      wipes:wipesByBoss[name]||0, avgParse, perPlayer,
+      deaths: deaths.byBoss[name]||0 };
+  });
+
+  return {
+    label:log.label, code:log.code,
+    host: rep.foundHost || log.host || "www",
+    title:rep.title, zone:rep.zone?.name||"",
+    start:rep.startTime, end:rep.endTime,
+    total:rep.endTime-rep.startTime,
+    kills: kills.map(f=>({name:f.name, dur:f.endTime-f.startTime, diff:DIFF[f.difficulty]||"", ilvl:f.averageItemLevel, wipes:wipesByBoss[f.name]||0})),
+    wipesTotal: fights.length - kills.length,
+    players: plist,
+    bossStats,
+    deaths,
+    activity,
+    consumables,
+    dtaken,
+    warnings: rep.warnings||[]
+  };
+}
+
+/* ============ tips-engine ============ */
+function tipsFor(p, r){
+  const t=[];
+  if(p.avgRank==null){ return [L("Geen parse-data gevonden voor deze speler.","No parse data found for this player.")]; }
+  if(p.avgRank<25) t.push(L("Fundament eerst: juiste talents/consumables, uptime op de boss omhoog (minder loze GCD's), en cooldowns überhaupt gebruiken in plaats van bewaren.","Fundamentals first: correct talents/consumables, higher uptime on the boss (fewer wasted GCDs), and actually using cooldowns instead of hoarding them."));
+  else if(p.avgRank<50) t.push(L("Focus op uptime en cooldown-frequentie: elke grote cooldown die 'voor straks' wordt bewaard is verloren damage/healing.","Focus on uptime and cooldown frequency: every big cooldown saved 'for later' is lost damage/healing."));
+  else if(p.avgRank<75) t.push(L("Prima basis. Volgende stap: opener perfectioneren en cooldowns aligned krijgen met lust en boss-fases.","Solid base. Next step: perfect your opener and align cooldowns with lust and boss phases."));
+  else if(p.avgRank<95) t.push(L("Sterk! Winst zit nu in min-maxen: cooldowns plannen op kill-tijd, target-prioriteit op cleave-momenten en het laatste beetje uptime tijdens movement.","Strong! Gains are now in min-maxing: planning cooldowns around kill time, target priority on cleave windows, and squeezing out the last bit of uptime during movement."));
+  else t.push(L("Topniveau. Verbetering zit vooral in kill-tijd, comp en funnel-strategieën — en dat teamgenoten in leven blijven.","Top tier. Improvement is mostly in kill time, comp and funnel strategies — and keeping teammates alive."));
+  if(p.spread>25) t.push(L(`Grote spreiding tussen bosses (beste ${p.best.toFixed(0)}, slechtste ${p.worst.toFixed(0)}). Bekijk per boss wat er misgaat: waarschijnlijk mechanics of movement op specifieke fights.`,`Large spread between bosses (best ${p.best.toFixed(0)}, worst ${p.worst.toFixed(0)}). Check per boss what goes wrong: probably mechanics or movement on specific fights.`));
+
+  /* --- deaths-analyse --- */
+  if(p.deaths!=null){
+    if(p.deaths===0){
+      t.push(L("Geen enkele death — mechanics zitten goed.","Not a single death — mechanics are on point."));
+    } else {
+      const topAb = Object.entries(p.deathsByAbility||{}).sort((a,b)=>b[1]-a[1])[0];
+      const topBoss = Object.entries(p.deathsByBoss||{}).sort((a,b)=>b[1]-a[1])[0];
+      let msg = L(`${p.deaths} death${p.deaths===1?"":"s"} deze raid`,`${p.deaths} death${p.deaths===1?"":"s"} this raid`);
+      if(topAb && topAb[0]!=="Onbekend") msg += L(`, ${topAb[1]>1?`waarvan ${topAb[1]}× door`:`door o.a.`} ${topAb[0]}`,`, ${topAb[1]>1?`${topAb[1]}× from`:`from e.g.`} ${topAb[0]}`);
+      if(topBoss) msg += L(` (vooral op ${topBoss[0]})`,` (mostly on ${topBoss[0]})`);
+      msg += ".";
+      t.push(msg);
+      if(topAb && topAb[1]>=2 && topAb[0]!=="Onbekend") t.push(L(`Herhaaldelijk gestorven aan dezelfde ability (${topAb[0]}) — dit is vrijwel zeker een vermijdbare mechanic. Bekijk de death-recap: te laat bewegen, defensive niet gebruikt, of buiten heal-bereik?`,`Died repeatedly to the same ability (${topAb[0]}) — this is almost certainly an avoidable mechanic. Check the death recap: moved too late, defensive unused, or out of healing range?`));
+      else if(p.deaths>=3) t.push(L("Relatief veel deaths. Vuistregel: een dode speler doet 0 dps — overleven met een lagere parse levert de raid meer op dan gulzig doorknallen.","Relatively many deaths. Rule of thumb: a dead player does 0 dps — surviving with a lower parse helps the raid more than greedily pushing."));
+    }
+  }
+  /* --- vermijdbare schade (damage taken vs. rolgenoten) --- */
+  if(p.role!=="tanks" && p.dtPerMin!=null && r && r.dtaken && r.dtaken.medianNonTank){
+    const med = r.dtaken.medianNonTank;
+    if(p.dtPerMin > med*1.4){
+      const topAb = Object.entries(p.dtByAbility||{}).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([n])=>n).filter(n=>n && n!=="Onbekend");
+      let msg = L(`Neemt veel schade: ~${fmtPts(p.dtPerMin)}/min tegenover ~${fmtPts(med)}/min mediaan bij niet-tanks`,`Takes a lot of damage: ~${fmtPts(p.dtPerMin)}/min versus ~${fmtPts(med)}/min median among non-tanks`);
+      if(topAb.length) msg += L(`, vooral van ${topAb.join(" en ")}`,`, mostly from ${topAb.join(" and ")}`);
+      msg += L(". Schade die niet bij je rol hoort is meestal vermijdbaar — het kost healer-mana en indirect je eigen output (movement, defensives, sterfrisico). Vaak grotere winst dan de rotatie zelf.",". Damage that doesn't belong to your role is usually avoidable — it costs healer mana and indirectly your own output (movement, defensives, death risk). Often a bigger gain than the rotation itself.");
+      t.push(msg);
+    }
+  }
+  /* --- activiteits-analyse (casts per minuut vs. rolgenoten) --- */
+  if(p.cpm!=null && r && r.activity && r.activity.medianByRole[p.role]){
+    const med = r.activity.medianByRole[p.role];
+    if(p.cpm < med*0.75) t.push(L(`Lage activiteit: ${p.cpm.toFixed(1)} casts/min tegenover ~${med.toFixed(1)} bij vergelijkbare rollen. Dat betekent veel loze GCD's — vaak tijdens movement of het 'wachten' op procs. Altijd iets casten, ook al is het suboptimaal.`,`Low activity: ${p.cpm.toFixed(1)} casts/min versus ~${med.toFixed(1)} for comparable roles. That means many wasted GCDs — often during movement or 'waiting' on procs. Always cast something, even if suboptimal.`));
+    else if(p.cpm < med*0.9 && p.avgRank<60) t.push(L(`Iets lagere cast-activiteit (${p.cpm.toFixed(1)}/min vs. ~${med.toFixed(1)} mediaan) — check de downtime-momenten in de log: waar vallen de gaten?`,`Slightly lower cast activity (${p.cpm.toFixed(1)}/min vs. ~${med.toFixed(1)} median) — check the downtime moments in the log: where do the gaps fall?`));
+  }
+  /* --- rol-specifieke tip --- */
+  if(p.role==="healers"){
+    if(p.avgRank<75) t.push(L("Healer-specifiek: HPS-parses zijn deels afhankelijk van hoeveel schade er binnenkomt. Kijk niet alleen naar throughput maar naar overhealing, mana-management en of cooldowns op de geplande raidschade-momenten vallen.","Healer-specific: HPS parses partly depend on how much damage comes in. Look beyond throughput at overhealing, mana management, and whether cooldowns land on the planned raid-damage moments."));
+    else t.push(L("Healer-specifiek: op dit niveau is de winst vooral cooldown-planning per fase en dps'en tijdens rustige momenten (elke healer-GCD zonder werk is gratis boss-damage).","Healer-specific: at this level the gains are mostly per-phase cooldown planning and dps-ing during quiet moments (every idle healer GCD is free boss damage)."));
+  } else if(p.role==="tanks"){
+    t.push(L("Tank-specifiek: parses zijn voor tanks secundair. Belangrijker: actieve mitigatie-uptime op tankbusters, strak positioneren voor cleave, en defensieve cooldowns plannen in plaats van reageren.","Tank-specific: parses are secondary for tanks. More important: active mitigation uptime on tankbusters, tight positioning for cleave, and planning defensive cooldowns instead of reacting."));
+  }
+  /* --- slechtste bosses concreet benoemen --- */
+  if(p.bossAvgs && p.bossAvgs.length>1){
+    const raidAvg = r && r.players.length ? r.players.reduce((s,x)=>s+(x.avgRank??0),0)/r.players.length : null;
+    const zwak = p.bossAvgs.filter(b=>b.rank < (p.avgRank-15)).slice(0,2);
+    if(zwak.length) t.push(L(`Zwakste fights: ${zwak.map(b=>`${b.boss} (parse ${b.rank.toFixed(0)})`).join(" en ")}. Bekijk daar de replay: sterfmomenten, uptime-dips tijdens mechanics en of cooldowns de fases halen.`,`Weakest fights: ${zwak.map(b=>`${b.boss} (parse ${b.rank.toFixed(0)})`).join(" and ")}. Watch the replay there: death moments, uptime dips during mechanics, and whether cooldowns reach the phases.`));
+    const sterk = p.bossAvgs[p.bossAvgs.length-1];
+    if(sterk && sterk.rank >= (p.avgRank+15)) t.push(L(`Beste fight: ${sterk.boss} (parse ${sterk.rank.toFixed(0)}) — dat niveau is dus haalbaar; het verschil met de mindere fights is vrijwel zeker executie, niet kunde.`,`Best fight: ${sterk.boss} (parse ${sterk.rank.toFixed(0)}) — so that level is achievable; the gap with the weaker fights is almost certainly execution, not skill.`));
+    if(raidAvg!=null && p.avgRank <= raidAvg-20) t.push(L(`Parset momenteel duidelijk onder het raidgemiddelde (${raidAvg.toFixed(0)}). Een 1-op-1 log-review met een officer of class-genoot levert hier waarschijnlijk het meeste op.`,`Currently parsing clearly below the raid average (${raidAvg.toFixed(0)}). A one-on-one log review with an officer or class-mate will probably help most here.`));
+  }
+  return t;
+}
+
+/* ============ algemeen raidadvies ============ */
+function overallAdvice(r){
+  const t=[];
+  const withRank = r.players.filter(p=>p.avgRank!=null);
+  if(!withRank.length) return [L("Geen parse-data beschikbaar — algemeen advies kan niet worden opgesteld. Wacht tot de log geranked is en analyseer opnieuw.","No parse data available — general advice can't be produced. Wait until the log is ranked and analyse again.")];
+  const avg = withRank.reduce((s,p)=>s+p.avgRank,0)/withRank.length;
+
+  // niveau
+  if(avg>=85) t.push(L(`Raidgemiddelde parse van ${avg.toFixed(0)} — dit is een sterk team. De grootste winst zit niet meer bij individuen maar in raid-brede optimalisatie: kill-tijden drukken, cooldown-schema's per boss en strakke pull-timers.`,`Raid-average parse of ${avg.toFixed(0)} — this is a strong team. The biggest gains are no longer with individuals but in raid-wide optimisation: pushing kill times, per-boss cooldown schedules and tight pull timers.`));
+  else if(avg>=60) t.push(L(`Raidgemiddelde parse van ${avg.toFixed(0)} — degelijke basis. Grootste collectieve winst: uptime tijdens movement-fases en het consequent stapelen van cooldowns met lust.`,`Raid-average parse of ${avg.toFixed(0)} — a solid base. Biggest collective gain: uptime during movement phases and consistently stacking cooldowns with lust.`));
+  else if(avg>=40) t.push(L(`Raidgemiddelde parse van ${avg.toFixed(0)}. Zet in op de basis vóór de finesse: iedereen volledige consumables, enchants en gems, en een korte log-review per speler na elke raidavond.`,`Raid-average parse of ${avg.toFixed(0)}. Nail the basics before the finesse: everyone on full consumables, enchants and gems, and a short per-player log review after each raid night.`));
+  else t.push(L(`Raidgemiddelde parse van ${avg.toFixed(0)} — hier is structureel veel te halen. Overweeg klasse-groepjes die elkaars logs reviewen en één focuspunt per week (bijv. "deze week: niemand bewaart cooldowns").`,`Raid-average parse of ${avg.toFixed(0)} — there's structurally a lot to gain here. Consider class groups reviewing each other's logs and one focus point per week (e.g. "this week: nobody hoards cooldowns").`));
+
+  // deaths raid-breed
+  if(r.deaths && r.deaths.available){
+    const veelDood = Object.values(r.deaths.byPlayer).filter(d=>d.count>=3).sort((a,b)=>b.count-a.count);
+    let msg = L(`${r.deaths.total} death${r.deaths.total===1?"":"s"} over de hele avond`,`${r.deaths.total} death${r.deaths.total===1?"":"s"} over the whole night`);
+    if(r.deaths.topAbility) msg += L(`; grootste killer: ${r.deaths.topAbility.name} (${r.deaths.topAbility.count}×)`,`; biggest killer: ${r.deaths.topAbility.name} (${r.deaths.topAbility.count}×)`);
+    msg += ".";
+    t.push(msg);
+    if(veelDood.length) t.push(L(`Spelers met opvallend veel deaths: ${veelDood.slice(0,3).map(d=>`${d.name} (${d.count}×)`).join(", ")}. Herhaalde deaths aan dezelfde mechanic zijn de goedkoopste dps/hps-winst die er bestaat — begin daar.`,`Players with notably many deaths: ${veelDood.slice(0,3).map(d=>`${d.name} (${d.count}×)`).join(", ")}. Repeated deaths to the same mechanic are the cheapest dps/hps gain there is — start there.`));
+  }
+
+  // vermijdbare schade raid-breed
+  if(r.dtaken && r.dtaken.available && r.dtaken.medianNonTank){
+    const med = r.dtaken.medianNonTank;
+    const heavy = r.players.filter(p=>p.role!=="tanks" && p.dtPerMin!=null && p.dtPerMin>med*1.4)
+      .sort((a,b)=>b.dtPerMin-a.dtPerMin);
+    if(heavy.length) t.push(L(`Vermijdbare schade valt op bij ${heavy.slice(0,3).map(p=>p.name).join(", ")} — zij eten fors meer dan de rest van de niet-tanks. Dat is vaak onzichtbare winst: ze blijven leven dankzij de healers, maar kosten mana en dwingen movement/defensives af die output kosten. Regelmatig een grotere hefboom dan de deaths zelf.`,`Avoidable damage stands out for ${heavy.slice(0,3).map(p=>p.name).join(", ")} — they eat far more than the rest of the non-tanks. That's often invisible gain: they survive thanks to the healers, but cost mana and force movement/defensives that cost output. Frequently a bigger lever than the deaths themselves.`));
+  }
+
+  // consumables & lust
+  if(r.consumables && r.consumables.available){
+    const c = r.consumables;
+    if(c.flaskCov!=null && c.flaskCov<85) t.push(L(`Flask/phial-dekking maar ~${c.flaskCov.toFixed(0)}% van de boss-tijd — er wordt geraid zonder flask (of hij loopt halverwege af). Dat is 2–3% gratis output die nu blijft liggen; maak flasks een guild-verplichting.`,`Flask/phial coverage only ~${c.flaskCov.toFixed(0)}% of boss time — people raid without a flask (or it runs out halfway). That's 2–3% free output left on the table; make flasks a guild requirement.`));
+    if(c.foodCov!=null && c.foodCov<75) t.push(L(`Well Fed-dekking ~${c.foodCov.toFixed(0)}% — voor pull even een feast neerzetten kost 30 seconden en levert de hele raid stats op.`,`Well Fed coverage ~${c.foodCov.toFixed(0)}% — dropping a feast before the pull takes 30 seconds and gives the whole raid stats.`));
+    const kills = Math.max(r.kills.length,1);
+    const potPerSpelerPerBoss = c.potionUses/(Math.max(c.playerCount,1)*kills);
+    if(potPerSpelerPerBoss < 0.6) t.push(L(`Potion-gebruik is laag: gemiddeld ${potPerSpelerPerBoss.toFixed(1)} potion per speler per boss. Pre-pot bij de pull + een tweede tijdens lust of execute hoort standaard te zijn — dit is een van de grootste 'te weinig gebruikte buffs'.`,`Potion usage is low: on average ${potPerSpelerPerBoss.toFixed(1)} potion per player per boss. Pre-pot on the pull + a second during lust or execute should be standard — one of the biggest 'under-used buffs'.`));
+    if(c.lustUses===0 && r.kills.length>0) t.push(L(`Geen Bloodlust/Heroism teruggevonden in de boss-fights — check of lust wel (en op het juiste moment, meestal on-pull of laatste fase) wordt gedrukt.`,`No Bloodlust/Heroism found in the boss fights — check that lust is actually pressed (and at the right moment, usually on-pull or last phase).`));
+  }
+
+  // spreiding binnen team
+  const sorted=[...withRank].sort((a,b)=>b.avgRank-a.avgRank);
+  const top=sorted[0], bottom=sorted[sorted.length-1];
+  if(sorted.length>2 && top.avgRank-bottom.avgRank>50) t.push(L(`Groot niveauverschil binnen het team (${top.name} ${top.avgRank.toFixed(0)} vs. ${bottom.name} ${bottom.avgRank.toFixed(0)}). Koppel top-parsers aan spelers die achterblijven: één avond samen loggen levert vaak meer op dan weken zelf puzzelen.`,`Big skill gap within the team (${top.name} ${top.avgRank.toFixed(0)} vs. ${bottom.name} ${bottom.avgRank.toFixed(0)}). Pair top parsers with players who lag behind: one night logging together often beats weeks of puzzling alone.`));
+
+  // wipes
+  const zorgen = r.bossStats.filter(b=>b.wipes>=3).sort((a,b)=>b.wipes-a.wipes);
+  if(r.wipesTotal===0) t.push(L("Nul wipes — een schone clear. Volgende stap is difficulty omhoog of kill-tijden drukken.","Zero wipes — a clean clear. Next step is difficulty up or pushing kill times."));
+  else if(zorgen.length) t.push(L(`${r.wipesTotal} wipes in totaal, geconcentreerd op ${zorgen.map(b=>`${b.name} (${b.wipes}×)`).join(", ")}. Zie het boss-advies hieronder voor de details per encounter.`,`${r.wipesTotal} wipes in total, concentrated on ${zorgen.map(b=>`${b.name} (${b.wipes}×)`).join(", ")}. See the boss advice below for the per-encounter details.`));
+  else t.push(L(`${r.wipesTotal} wipe${r.wipesTotal===1?"":"s"} in totaal, netjes verspreid — geen structureel struikelblok.`,`${r.wipesTotal} wipe${r.wipesTotal===1?"":"s"} in total, nicely spread — no structural stumbling block.`));
+
+  // tijd
+  const uur = r.total/3600000;
+  if(uur>3.5 && r.kills.length<8) t.push(L(`Raidtijd van ${fmtDur(r.total)} voor ${r.kills.length} kills — relatief veel dode tijd. Strakkere pull-timers en snellere loot-afhandeling winnen zomaar 20–30 minuten per avond.`,`Raid time of ${fmtDur(r.total)} for ${r.kills.length} kills — relatively a lot of dead time. Tighter pull timers and faster loot handling can easily save 20–30 minutes per night.`));
+
+  return t;
+}
+
+/* ============ advies per boss ============ */
+function bossBadge(b){
+  if(b.wipes>=3 || (b.avgParse!=null && b.avgParse<40)) return `<span class="badge zorg">${L("zorgenkindje","problem child")}</span>`;
+  if(b.wipes>=1 || (b.avgParse!=null && b.avgParse<60)) return `<span class="badge let">${L("kan beter","could be better")}</span>`;
+  return `<span class="badge goed">${L("onder controle","under control")}</span>`;
+}
+function bossAdvice(b, r, allReps){
+  const t=[];
+  // vergelijking met andere logs
+  if(allReps.length>1){
+    const others = allReps.filter(x=>x!==r).map(x=>x.kills.find(k=>k.name===b.name)).filter(Boolean);
+    if(others.length){
+      const best = Math.min(...others.map(k=>k.dur));
+      const d = (b.dur-best)/1000;
+      if(d>20) t.push(L(`Kill-tijd ${fmtClock(b.dur)} vs. ${fmtClock(best)} bij de snelste vergeleken log — ${Math.round(d)}s langzamer. Kijk in hun log naar comp, cooldown-momenten en waar zij lust drukken.`,`Kill time ${fmtClock(b.dur)} vs. ${fmtClock(best)} on the fastest compared log — ${Math.round(d)}s slower. Look at their log for comp, cooldown timings and where they press lust.`));
+      else if(d<-10) t.push(L(`Snelste kill van de vergeleken logs (${fmtClock(b.dur)}) — deze strategie werkt, houd vast.`,`Fastest kill of the compared logs (${fmtClock(b.dur)}) — this strategy works, stick with it.`));
+      else t.push(L(`Kill-tijd ${fmtClock(b.dur)}, vrijwel gelijk aan de andere logs — hier zit weinig verschil.`,`Kill time ${fmtClock(b.dur)}, almost equal to the other logs — little difference here.`));
+    }
+    // teamparse op deze boss vs. andere logs
+    const otherStats = allReps.filter(x=>x!==r).map(x=>(x.bossStats||[]).find(s=>s.name===b.name)).filter(s=>s && s.avgParse!=null);
+    if(b.avgParse!=null && otherStats.length){
+      const bestS = [...otherStats].sort((a,c)=>c.avgParse-a.avgParse)[0];
+      const d = b.avgParse - bestS.avgParse;
+      if(d<=-15) t.push(L(`Teamparse op deze boss ${b.avgParse.toFixed(0)} tegenover ${bestS.avgParse.toFixed(0)} bij de beste vergeleken log — juist op deze fight blijft er output liggen. Vergelijk de tactiek: vaak dwingt een andere positionering of cooldown-planning daar meer uptime af.`,`Team parse on this boss ${b.avgParse.toFixed(0)} versus ${bestS.avgParse.toFixed(0)} on the best compared log — output is left on the table specifically on this fight. Compare the tactics: often different positioning or cooldown planning forces more uptime there.`));
+      else if(d>=15) t.push(L(`Teamparse ${b.avgParse.toFixed(0)} vs. ${bestS.avgParse.toFixed(0)} bij de andere logs — op deze boss presteert dit team relatief het best van de vergelijking.`,`Team parse ${b.avgParse.toFixed(0)} vs. ${bestS.avgParse.toFixed(0)} on the other logs — on this boss this team performs relatively best of the comparison.`));
+    }
+  }
+  // wipes
+  if(b.wipes>=3) t.push(L(`${b.wipes} wipes op deze boss — het grootste struikelblok van de avond. Wijs per mechanic een verantwoordelijke aan, en bespreek de eerste 2 wipe-replays vóór de volgende raid.`,`${b.wipes} wipes on this boss — the biggest stumbling block of the night. Assign someone responsible per mechanic, and review the first 2 wipe replays before the next raid.`));
+  else if(b.wipes>0) t.push(L(`${b.wipes} wipe${b.wipes>1?"s":""} — waarschijnlijk een uitglijder, maar check even of het steeds dezelfde mechanic was.`,`${b.wipes} wipe${b.wipes>1?"s":""} — probably a slip-up, but check whether it was the same mechanic each time.`));
+  // deaths op deze boss
+  if(r.deaths && r.deaths.available && b.deaths>0){
+    const abOnBoss = {};
+    const diedHere = [];
+    Object.values(r.deaths.byPlayer).forEach(dp=>{
+      const n = dp.byBoss[b.name];
+      if(n){ diedHere.push({name:dp.name, n}); }
+    });
+    diedHere.sort((x,y)=>y.n-x.n);
+    let msg = L(`${b.deaths} death${b.deaths===1?"":"s"} op deze boss (alle pulls)`,`${b.deaths} death${b.deaths===1?"":"s"} on this boss (all pulls)`);
+    if(diedHere.length) msg += L(`, vaakst: ${diedHere.slice(0,3).map(d=>`${d.name}${d.n>1?` (${d.n}×)`:""}`).join(", ")}`,`, most often: ${diedHere.slice(0,3).map(d=>`${d.name}${d.n>1?` (${d.n}×)`:""}`).join(", ")}`);
+    msg += ".";
+    t.push(msg);
+  }
+  // raid-parse op deze boss
+  if(b.avgParse!=null){
+    if(b.avgParse<45) t.push(L(`Gemiddelde parse van het team op deze boss: ${b.avgParse.toFixed(0)} — opvallend laag. Vaak betekent dit veel movement/downtime door de tactiek; kijk of een strakkere positionering meer uptime oplevert.`,`Team average parse on this boss: ${b.avgParse.toFixed(0)} — notably low. Often this means a lot of movement/downtime from the tactics; see whether tighter positioning yields more uptime.`));
+    else if(b.avgParse>=80) t.push(L(`Gemiddelde teamparse ${b.avgParse.toFixed(0)} — deze fight ligt het team uitstekend.`,`Team average parse ${b.avgParse.toFixed(0)} — this fight suits the team excellently.`));
+  }
+  // zwakste spelers op deze boss
+  if(b.perPlayer.length>=3){
+    const teamAvg = b.avgParse??0;
+    const zwak = b.perPlayer.filter(p=>p.rank < teamAvg-25).slice(0,2);
+    if(zwak.length) t.push(L(`Grootste individuele winst hier: ${zwak.map(p=>`${p.name} (${p.rank.toFixed(0)})`).join(" en ")} — parse ligt ver onder het teamgemiddelde op juist deze fight; waarschijnlijk een mechanic- of movementprobleem, geen rotatieprobleem.`,`Biggest individual gain here: ${zwak.map(p=>`${p.name} (${p.rank.toFixed(0)})`).join(" and ")} — parse is far below the team average on this fight specifically; probably a mechanic or movement problem, not a rotation problem.`));
+  }
+  if(!t.length) t.push(L("Niets op aan te merken — schone kill.","Nothing to note — clean kill."));
+  return t;
+}
+
+/* ============ renderen ============ */
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  ["overzicht","spelers","parses","advies","verhaal"].forEach(t=>$("tab-"+t).style.display = t===b.dataset.tab?"block":"none");
+}));
+
+function renderAll(){ renderOverzicht(); renderSpelers(); renderParses(); renderAdvies(); renderVerhaal(); }
+
+function renderOverzicht(){
+  const reps = state.analysed;
+  // verzamel alle bossnamen in volgorde van eerste report
+  const bosses=[];
+  reps.forEach(r=>r.kills.forEach(k=>{ if(!bosses.includes(k.name)) bosses.push(k.name); }));
+  const dateSub = d => `<div class="small" style="font-weight:400;text-transform:none;letter-spacing:normal;font-family:'Source Sans 3',sans-serif">${esc(fmtDate(d))}</div>`;
+  let html = `<div class="scroll"><table><thead><tr><th></th>${reps.map(r=>`<th${r.code===state.mineCode?` class="minehdr" title="${L('Jouw guild','Your guild')}"`:""}>${esc(r.label)}${dateSub(r.start)}</th>`).join("")}</tr></thead><tbody>`;
+  html += `<tr><td><b>${L("Totale raidtijd","Total raid time")}</b></td>${reps.map(r=>`<td class="num">${fmtDur(r.total)}</td>`).join("")}</tr>`;
+  html += `<tr><td><b>${L("Wipes totaal","Total wipes")}</b></td>${reps.map(r=>`<td class="num">${r.wipesTotal}</td>`).join("")}</tr>`;
+  // gemiddelde raidparse per log
+  const raidAvgs = reps.map(r=>{ const w=r.players.filter(p=>p.avgRank!=null); return w.length? w.reduce((s,p)=>s+p.avgRank,0)/w.length : null; });
+  if(raidAvgs.some(a=>a!=null)){
+    const bestAvg = Math.max(...raidAvgs.filter(a=>a!=null));
+    const multi = raidAvgs.filter(a=>a!=null).length>1;
+    html += `<tr><td><b>${L("Gem. raidparse","Avg. raid parse")}</b></td>${raidAvgs.map(a=>{
+      if(a==null) return `<td class="num small">—</td>`;
+      const gold = multi && a===bestAvg;
+      return `<td class="num pval" style="color:${gold?"var(--gold)":parseColor(a)}${gold?";text-shadow:0 0 8px rgba(229,204,128,.4);font-weight:700":""}">${a.toFixed(0)}</td>`;
+    }).join("")}</tr>`;
+  }
+  for(const b of bosses){
+    const times = reps.map(r=>r.kills.find(k=>k.name===b)?.dur ?? null);
+    const min = Math.min(...times.filter(t=>t!=null));
+    html += `<tr><td>${esc(b)} <span class="small">${esc(reps.map(r=>r.kills.find(k=>k.name===b)?.diff).find(Boolean)||"")}</span></td>` +
+      reps.map((r,i)=>{
+        const k=r.kills.find(k=>k.name===b);
+        if(!k) return `<td class="num small">—</td>`;
+        const cls = k.dur===min && times.filter(t=>t!=null).length>1 ? "num fast":"num";
+        return `<td class="${cls}">${fmtClock(k.dur)}${k.wipes?` <span class="small">(${k.wipes} wipe${k.wipes>1?"s":""})</span>`:""}</td>`;
+      }).join("") + `</tr>`;
+  }
+  html += `</tbody></table></div><p class="hint">${L("Datum staat onder elke log-naam. Goud = snelste kill (of hoogste gem. raidparse) van de vergeleken logs. Tussen haakjes het aantal wipes op die boss.","The date is shown under each log name. Gold = fastest kill (or highest avg. raid parse) of the compared logs. In brackets: the number of wipes on that boss.")}</p>`;
+  $("tab-overzicht").innerHTML = reps.length? html : `<div class="empty">${L("Geen data.","No data.")}</div>`;
+}
+
+function reportSelector(targetId){
+  const mine = mineIndex();
+  return `<div class="row" style="margin-bottom:14px;align-items:center"><label style="margin:0">${L("Log:","Log:")}</label>
+    <select id="${targetId}">${state.analysed.map((r,i)=>`<option value="${i}"${i===mine?" selected":""}>${r.code===state.mineCode?"★ ":""}${esc(r.label)} — ${esc(fmtDate(r.start))}</option>`).join("")}</select>
+    ${state.mineCode?"":`<span class="small">${L("Tip: markeer bij stap II een log als ★ Mijn guild, dan staat die hier overal standaard geselecteerd.","Tip: mark a log as ★ My guild in step II, then it's selected by default everywhere here.")}</span>`}</div>`;
+}
+
+function playerReportUrl(r, p){
+  const host = (r && r.host) || "www";
+  const base = `https://${host}.warcraftlogs.com/reports/${r.code}`;
+  return (p && p.actorId!=null) ? `${base}?source=${p.actorId}` : base;
+}
+function playerReportUrlByName(r, name){
+  return playerReportUrl(r, r.players.find(x=>x.name===name));
+}
+// klikbare naam voor in tabelcellen (erft de celgrootte, opent de speler in deze log op WCL)
+function playerLinkCell(r, name, cls){
+  const url = playerReportUrlByName(r, name);
+  return `<a class="pnamelink" href="${url}" target="_blank" rel="noopener" style="color:${classColor(cls)};font-weight:700;text-shadow:0 1px 2px #000" title="${L(`Bekijk ${esc(name)} in deze log op Warcraft Logs`,`View ${esc(name)} in this log on Warcraft Logs`)}">${esc(name)}<span class="ext">↗</span></a>`;
+}
+function firstRepWithPlayer(reps, name){
+  return reps.find(r=>r.players.some(p=>p.name===name && p.actorId!=null))
+      || reps.find(r=>r.players.some(p=>p.name===name)) || null;
+}
+
+function renderSpelers(){
+  const el=$("tab-spelers");
+  el.innerHTML = reportSelector("selSpelers") + `<div id="spelersInner"></div>`;
+  const draw = ()=>{
+    const r = state.analysed[+$("selSpelers").value];
+    const warn = r.warnings.length ? `<p class="status err" style="margin-bottom:10px">⚠ ${esc(r.warnings.join(" · "))}. ${L("Vaak helpt het om een paar minuten te wachten (verse logs zijn nog niet geranked) en opnieuw te analyseren.","Waiting a few minutes often helps (fresh logs aren't ranked yet) and analysing again.")}</p>` : "";
+    // deaths per speler
+    let deathTable = "";
+    if(r.deaths && r.deaths.available){
+      const dlist = Object.values(r.deaths.byPlayer).sort((a,b)=>b.count-a.count);
+      const top5 = dlist.slice(0,5);
+      deathTable = dlist.length ? `<h3 style="font-family:Cinzel,serif;font-weight:600;font-size:15px;letter-spacing:.06em;color:var(--gold);margin:4px 0 8px">${L("Deaths per speler — top 5","Deaths per player — top 5")}</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>${L("Speler","Player")}</th><th class="num">${L("Deaths","Deaths")}</th></tr></thead><tbody>`+
+        top5.map(d=>{
+          const pl = r.players.find(p=>p.name===d.name);
+          return `<tr>
+            <td>${playerLinkCell(r, d.name, pl?pl.cls:d.cls)}</td>
+            <td class="num" style="color:${d.count>=3?"var(--danger)":d.count>1?"#ffcf5c":"var(--text)"}">${d.count}</td>
+          </tr>`;
+        }).join("")+`</tbody></table></div>` +
+        L(`<p class="hint" style="margin-bottom:18px">De 5 spelers met de meeste deaths${dlist.length>5?` (van ${dlist.length} spelers die vielen)`:""}. Raidtotaal: ${r.deaths.total} death${r.deaths.total===1?"":"s"}.</p>`,`<p class="hint" style="margin-bottom:18px">The 5 players with the most deaths${dlist.length>5?` (of ${dlist.length} players who died)`:""}. Raid total: ${r.deaths.total} death${r.deaths.total===1?"":"s"}.</p>`) : `<p class="hint" style="margin-bottom:14px">${L("✨ Nul deaths in de hele raid — niets te melden.","✨ Zero deaths in the entire raid — nothing to report.")}</p>`;
+    } else {
+      deathTable = `<p class="hint" style="margin-bottom:14px">${L("Deaths per speler zijn voor deze log niet beschikbaar (de Deaths-tabel kon niet worden opgehaald).","Deaths per player aren't available for this log (the Deaths table couldn't be fetched).")}</p>`;
+    }
+
+    // vermijdbare schade (damage taken) — niet-tanks, hoogste schade per minuut eerst
+    let dtTable = "";
+    if(r.dtaken && r.dtaken.available){
+      const med = r.dtaken.medianNonTank || 0;
+      const rows = r.players.filter(p=>p.role!=="tanks" && p.dtPerMin!=null)
+        .sort((a,b)=>b.dtPerMin-a.dtPerMin).slice(0,5);
+      dtTable = rows.length ? `<h3 style="font-family:Cinzel,serif;font-weight:600;font-size:15px;letter-spacing:.06em;color:var(--gold);margin:4px 0 8px">${L("Vermijdbare schade — meest geraakt (niet-tanks)","Avoidable damage — most hit (non-tanks)")}</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>${L("Speler","Player")}</th><th class="num">${L("Schade/min","Damage/min")}</th><th>${L("Grootste bron","Biggest source")}</th></tr></thead><tbody>`+
+        rows.map(p=>{
+          const hot = med && p.dtPerMin > med*1.4;
+          const topAb = Object.entries(p.dtByAbility||{}).sort((a,b)=>b[1]-a[1])[0];
+          return `<tr>
+            <td>${playerLinkCell(r, p.name, p.cls)}</td>
+            <td class="num" style="color:${hot?"var(--danger)":"var(--text)"}">${fmtPts(p.dtPerMin)}</td>
+            <td class="small">${topAb?esc(unk(topAb[0])):"—"}</td>
+          </tr>`;
+        }).join("")+`</tbody></table></div>` +
+        L(`<p class="hint" style="margin-bottom:18px">Schade per minuut, tanks uitgesloten (die horen schade te eten). Mediaan niet-tanks: ${med?fmtPts(med)+"/min":"—"}. Rood = ruim boven de mediaan → waarschijnlijk vermijdbare mechanics.</p>`,`<p class="hint" style="margin-bottom:18px">Damage per minute, tanks excluded (they're meant to eat damage). Median non-tanks: ${med?fmtPts(med)+"/min":"—"}. Red = well above the median → probably avoidable mechanics.</p>`) : `<p class="hint" style="margin-bottom:14px">${L("Geen damage-taken-data om te tonen.","No damage-taken data to show.")}</p>`;
+    } else {
+      dtTable = `<p class="hint" style="margin-bottom:14px">${L("Vermijdbare-schade-analyse is voor deze log niet beschikbaar (de DamageTaken-tabel kon niet worden opgehaald).","Avoidable-damage analysis isn't available for this log (the DamageTaken table couldn't be fetched).")}</p>`;
+    }
+
+    $("spelersInner").innerHTML = warn + deathTable + dtTable + (r.players.length ? r.players.map(p=>{
+      const c = parseColor(p.avgRank??0);
+      const bossDetail = p.bossAvgs && p.bossAvgs.length ? `
+        <details class="pdetail"><summary>${L("Per boss","Per boss")} (${p.bossAvgs.length})</summary>
+          <div class="scroll"><table>
+            <thead><tr><th>Boss</th><th class="num">Parse</th><th class="num">${p.metricLabel}</th><th class="num">${L("Deaths","Deaths")}</th></tr></thead><tbody>
+            ${[...p.bossAvgs].sort((a,b)=>b.rank-a.rank).map(b=>`<tr>
+              <td>${esc(unk(b.boss))}</td>
+              <td class="num pval" style="color:${parseColor(b.rank)}">${b.rank.toFixed(0)}</td>
+              <td class="num">${b.amount!=null?fmtAmount(b.amount):"—"}</td>
+              <td class="num">${p.deathsByBoss && p.deathsByBoss[b.boss]?p.deathsByBoss[b.boss]:"0"}</td>
+            </tr>`).join("")}
+          </tbody></table></div>
+        </details>` : "";
+      return `<div class="playerblock">
+        <a class="pname pnamelink" href="${playerReportUrl(r, p)}" target="_blank" rel="noopener" style="color:${classColor(p.cls)}" title="${L(`Bekijk ${esc(p.name)} in deze log op Warcraft Logs`,`View ${esc(p.name)} in this log on Warcraft Logs`)}">${esc(p.name)}<span class="ext">↗</span></a>
+        <span class="prole">${esc(p.cls)} · ${p.role==="dps"?"DPS":p.role==="healers"?"Healer":"Tank"} · ${L("gem. parse","avg. parse")} <b style="color:${c}">${p.avgRank?.toFixed(0)??"?"}</b>${p.avgAmount!=null?` · ${fmtAmount(p.avgAmount)} ${p.metricLabel}`:""}${p.avgIlvl?` · ilvl ${p.avgIlvl.toFixed(0)}`:""}${p.deaths!=null?` · ${p.deaths} death${p.deaths===1?"":"s"}`:""}${p.cpm!=null?` · ${p.cpm.toFixed(1)} casts/min`:""}</span>
+        <ul class="tips">${tipsFor(p, r).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+        ${bossDetail}
+      </div>`;
+    }).join("") : `<div class="empty">${L("Geen spelersdata in deze log.","No player data in this log.")}</div>`);
+  };
+  $("selSpelers").addEventListener("change",draw); draw();
+}
+
+function renderParses(){
+  const el=$("tab-parses");
+  const reps = state.analysed;
+
+  // union van alle spelers over alle logs (naam -> class + rol)
+  const playerMap = {};
+  reps.forEach(r=>r.players.forEach(p=>{
+    if(!playerMap[p.name]) playerMap[p.name]={name:p.name, cls:p.cls, role:p.role};
+    else if(!playerMap[p.name].cls && p.cls) playerMap[p.name].cls=p.cls;
+  }));
+  const names = Object.keys(playerMap).sort((a,b)=>a.localeCompare(b,"nl"));
+  if(!names.length){ el.innerHTML = `<div class="empty">${L("Geen spelersdata in de logs.","No player data in the logs.")}</div>`; return; }
+
+  // standaard-speler: hoogste parser van 'mijn guild'-log (of eerste log)
+  const baseRep = reps[mineIndex()];
+  const defaultName = (baseRep.players[0] && baseRep.players[0].name) || names[0];
+
+  el.innerHTML = `<div class="row" style="margin-bottom:14px;align-items:center">
+      <label style="margin:0">${L("Speler:","Player:")}</label>
+      <select id="selParsePlayer">${names.map(n=>`<option value="${esc(n)}"${n===defaultName?" selected":""}>${esc(n)}</option>`).join("")}</select>
+    </div>
+    <div id="parsesInner"></div>
+    <p class="hint">${L("Parses van de gekozen speler per boss, elke raid naast elkaar (gekleurd zoals op Warcraft Logs). Voor healers zijn dit <b>healing-parses (HPS)</b>, voor dps en tanks damage-parses (DPS). Goud = de hoogste parse voor die boss over de vergeleken raids. Een — betekent dat de speler die boss (of die raid) niet meedeed.","Parses for the selected player per boss, every raid side by side (coloured like on Warcraft Logs). For healers these are <b>healing parses (HPS)</b>, for dps and tanks damage parses (DPS). Gold = the highest parse for that boss across the compared raids. A — means the player didn't take part in that boss (or that raid).")}</p>`;
+
+  const draw = ()=>{
+    const name = $("selParsePlayer").value;
+    const pinfo = playerMap[name];
+    // rol ophalen uit de eerste log waar de speler in voorkomt
+    let role = pinfo.role || "";
+    for(const r of reps){ const p=r.players.find(pp=>pp.name===name); if(p){ role=p.role; break; } }
+    const roleLbl = role==="dps"?"DPS":role==="healers"?L("Healer","Healer"):role==="tanks"?L("Tank","Tank"):"";
+    const isHealer = role==="healers";
+    const metricShort = isHealer ? "HPS" : "DPS";
+    const metricBadge = `<span class="badge ${isHealer?"goed":""}" style="${isHealer?"color:var(--green);border-color:#1a4a10":""}">${isHealer?L("healing-parses · HPS","healing parses · HPS"):L("damage-parses · DPS","damage parses · DPS")}</span>`;
+
+    // bosses: union over alle logs in kill-volgorde
+    const bosses=[];
+    reps.forEach(r=>r.kills.forEach(k=>{ if(!bosses.includes(k.name)) bosses.push(k.name); }));
+
+    const findP  = r => r.players.find(pp=>pp.name===name) || null;
+    const parseOf = (r,boss)=>{ const p=findP(r); if(!p) return null; const b=p.bossAvgs.find(x=>x.boss===boss); return b?b.rank:null; };
+    const avgOf  = r=>{ const p=findP(r); return p?p.avgRank:null; };
+    const ilvlOf = r=>{ const p=findP(r); return p&&p.avgIlvl?p.avgIlvl:null; };
+
+    // gouden cel = beste (hoogste) waarde van de rij, mits meer dan 1 vergelijkbare waarde
+    const rowCell = (v, best, count)=>{
+      if(v==null) return `<td class="num small">\u2014</td>`;
+      const gold = best!=null && v===best && count>1;
+      return `<td class="num pval" style="color:${gold?"var(--gold)":parseColor(v)}${gold?";text-shadow:0 0 8px rgba(229,204,128,.4);font-weight:700":""}">${v.toFixed(0)}</td>`;
+    };
+
+    // header met log-naam + datum
+    const dateSub = d => `<div class="small" style="font-weight:400;text-transform:none;letter-spacing:normal;font-family:'Source Sans 3',sans-serif">${esc(fmtDate(d))}</div>`;
+    let html = `<div class="playerblock" style="padding-top:0;padding-bottom:10px">
+        ${(()=>{ const lr=firstRepWithPlayer(reps,name); return lr ? `<a class="pname pnamelink" href="${playerReportUrlByName(lr,name)}" target="_blank" rel="noopener" style="color:${classColor(pinfo.cls)}" title="${L(`Bekijk ${esc(name)} op Warcraft Logs (${esc(lr.label)})`,`View ${esc(name)} on Warcraft Logs (${esc(lr.label)})`)}">${esc(name)}<span class="ext">↗</span></a>` : `<span class="pname" style="color:${classColor(pinfo.cls)}">${esc(name)}</span>`; })()}
+        <span class="prole">${esc(pinfo.cls||"?")}${roleLbl?` \u00b7 ${roleLbl}`:""}</span>
+        ${metricBadge}
+      </div>`;
+    html += `<div class="scroll"><table><thead><tr><th>Boss</th>${reps.map(r=>`<th class="num${r.code===state.mineCode?" minehdr":""}"${r.code===state.mineCode?` title="${L('Jouw guild','Your guild')}"`:""}>${esc(r.label)}${dateSub(r.start)}</th>`).join("")}</tr></thead><tbody>`;
+
+    // ilvl-rij
+    html += `<tr><td class="small">ilvl</td>${reps.map(r=>{ const v=ilvlOf(r); return `<td class="num small">${v?v.toFixed(0):"\u2014"}</td>`; }).join("")}</tr>`;
+
+    // gemiddelde parse per raid
+    const avgs = reps.map(avgOf);
+    const usableAvg = avgs.filter(v=>v!=null);
+    const bestAvg = usableAvg.length? Math.max(...usableAvg) : null;
+    html += `<tr><td><b>${L("Gem. parse","Avg. parse")}</b> <span class="small">${metricShort}</span></td>${avgs.map(v=>rowCell(v,bestAvg,usableAvg.length)).join("")}</tr>`;
+
+    // per boss
+    for(const boss of bosses){
+      const vals = reps.map(r=>parseOf(r,boss));
+      const usable = vals.filter(v=>v!=null);
+      const best = usable.length? Math.max(...usable) : null;
+      html += `<tr><td title="${esc(boss)}">${esc(boss)}</td>${vals.map(v=>rowCell(v,best,usable.length)).join("")}</tr>`;
+    }
+    html += `</tbody></table></div>`;
+    $("parsesInner").innerHTML = html;
+  };
+  $("selParsePlayer").addEventListener("change",draw); draw();
+}
+
+/* ============ vergelijking tussen logs ============ */
+function raidMetrics(r){
+  const withRank = r.players.filter(p=>p.avgRank!=null);
+  const avgParse = withRank.length? withRank.reduce((s,p)=>s+p.avgRank,0)/withRank.length : null;
+  const pc = (r.consumables && r.consumables.playerCount) || withRank.length || 1;
+  const kills = Math.max(r.kills.length,1);
+  return {
+    kills:r.kills.length, wipes:r.wipesTotal, time:r.total, avgParse, playerCount:pc,
+    deaths: r.deaths && r.deaths.available ? r.deaths.total : null,
+    deathsPP: r.deaths && r.deaths.available ? r.deaths.total/pc : null,
+    flask: r.consumables && r.consumables.available ? r.consumables.flaskCov : null,
+    food: r.consumables && r.consumables.available ? r.consumables.foodCov : null,
+    potPP: r.consumables && r.consumables.available ? r.consumables.potionUses/(pc*kills) : null
+  };
+}
+function compareTable(reps){
+  const ms = reps.map(raidMetrics);
+  const rows = [
+    {label:L("Bosses gedood","Bosses killed"), get:m=>m.kills, fmt:v=>v, better:"high"},
+    {label:L("Wipes","Wipes"), get:m=>m.wipes, fmt:v=>v, better:"low"},
+    {label:L("Totale raidtijd","Total raid time"), get:m=>m.time, fmt:v=>fmtDur(v), better:"low"},
+    {label:L("Gem. parse","Avg. parse"), get:m=>m.avgParse, fmt:v=>v.toFixed(0), better:"high"},
+    {label:L("Deaths totaal","Total deaths"), get:m=>m.deaths, fmt:v=>v, better:"low"},
+    {label:L("Deaths per speler","Deaths per player"), get:m=>m.deathsPP, fmt:v=>v.toFixed(1), better:"low"},
+    {label:L("Flask/phial-dekking","Flask/phial coverage"), get:m=>m.flask, fmt:v=>v.toFixed(0)+"%", better:"high"},
+    {label:L("Well Fed-dekking","Well Fed coverage"), get:m=>m.food, fmt:v=>v.toFixed(0)+"%", better:"high"},
+    {label:L("Potions per speler per boss","Potions per player per boss"), get:m=>m.potPP, fmt:v=>v.toFixed(1), better:"high"}
+  ];
+  let html = `<div class="scroll" style="margin-bottom:14px"><table><thead><tr><th></th>${reps.map(r=>`<th${r.code===state.mineCode?` class="minehdr" title="${L('Jouw guild','Your guild')}"`:""}>${esc(r.label)}</th>`).join("")}</tr></thead><tbody>`;
+  for(const row of rows){
+    const vals = ms.map(m=>row.get(m));
+    if(vals.every(v=>v==null)) continue;
+    const usable = vals.filter(v=>v!=null);
+    const best = row.better==="high" ? Math.max(...usable) : Math.min(...usable);
+    const allEqual = usable.length<2 || usable.every(v=>v===usable[0]);
+    html += `<tr><td><b>${row.label}</b></td>${vals.map(v=>{
+      if(v==null) return `<td class="num small">—</td>`;
+      const isBest = !allEqual && v===best;
+      return `<td class="num"${isBest?' style="color:var(--gold);font-weight:700;text-shadow:0 0 8px rgba(229,204,128,.4)"':""}>${row.fmt(v)}</td>`;
+    }).join("")}</tr>`;
+  }
+  html += `</tbody></table></div><p class="hint" style="margin-bottom:16px">${L("Goud = beste waarde van de vergeleken logs.","Gold = best value of the compared logs.")}</p>`;
+  return html;
+}
+function compareInsights(r, reps){
+  const t=[];
+  const others = reps.filter(x=>x!==r);
+  if(!others.length) return t;
+  const m = raidMetrics(r);
+  const otherM = others.map(o=>({o, m:raidMetrics(o)}));
+
+  // output (parses)
+  const bestP = otherM.filter(x=>x.m.avgParse!=null).sort((a,b)=>b.m.avgParse-a.m.avgParse)[0];
+  if(m.avgParse!=null && bestP){
+    const d = m.avgParse - bestP.m.avgParse;
+    if(d>=5) t.push(L(`Output: ${r.label} parset gemiddeld het hoogst (${m.avgParse.toFixed(0)} vs. ${bestP.m.avgParse.toFixed(0)} bij ${bestP.o.label}). Individuele skill is hier het sterke punt.`,`Output: ${r.label} parses highest on average (${m.avgParse.toFixed(0)} vs. ${bestP.m.avgParse.toFixed(0)} for ${bestP.o.label}). Individual skill is the strong point here.`));
+    else if(d<=-5) t.push(L(`Output: ${bestP.o.label} parset gemiddeld hoger (${bestP.m.avgParse.toFixed(0)} vs. ${m.avgParse.toFixed(0)}). Vergelijk in het Parses-tabblad per boss waar het grootste gat zit — vaak zijn het maar 2–3 fights die het verschil maken.`,`Output: ${bestP.o.label} parses higher on average (${bestP.m.avgParse.toFixed(0)} vs. ${m.avgParse.toFixed(0)}). In the Parses tab, compare per boss where the biggest gap is — often it's just 2–3 fights that make the difference.`));
+    else t.push(L(`Output: gemiddelde parses zijn vergelijkbaar (${m.avgParse.toFixed(0)} vs. ${bestP.m.avgParse.toFixed(0)}) — het verschil tussen deze raids zit niet in individuele skill.`,`Output: average parses are comparable (${m.avgParse.toFixed(0)} vs. ${bestP.m.avgParse.toFixed(0)}) — the difference between these raids isn't individual skill.`));
+  }
+  // overleven
+  const bestD = otherM.filter(x=>x.m.deathsPP!=null).sort((a,b)=>a.m.deathsPP-b.m.deathsPP)[0];
+  if(m.deathsPP!=null && bestD){
+    const d = m.deathsPP - bestD.m.deathsPP;
+    if(d>=0.5) t.push(L(`Overleven: bij ${bestD.o.label} stierven spelers duidelijk minder vaak (${bestD.m.deathsPP.toFixed(1)} vs. ${m.deathsPP.toFixed(1)} deaths per speler). Minder doodgaan is vrijwel altijd het snelste pad naar snellere kills — mechanics boven parse-jacht.`,`Survival: on ${bestD.o.label} players died clearly less often (${bestD.m.deathsPP.toFixed(1)} vs. ${m.deathsPP.toFixed(1)} deaths per player). Dying less is almost always the fastest path to faster kills — mechanics over parse-chasing.`));
+    else if(d<=-0.5) t.push(L(`Overleven: ${r.label} blijft het best in leven (${m.deathsPP.toFixed(1)} deaths per speler vs. ${bestD.m.deathsPP.toFixed(1)} bij ${bestD.o.label}) — discipline op mechanics is hier een sterk punt.`,`Survival: ${r.label} stays alive best (${m.deathsPP.toFixed(1)} deaths per player vs. ${bestD.m.deathsPP.toFixed(1)} for ${bestD.o.label}) — mechanics discipline is a strong point here.`));
+  }
+  // voorbereiding (consumables)
+  const bestF = otherM.filter(x=>x.m.flask!=null).sort((a,b)=>b.m.flask-a.m.flask)[0];
+  if(m.flask!=null && bestF){
+    const d = m.flask - bestF.m.flask;
+    if(d<=-15) t.push(L(`Voorbereiding: ${bestF.o.label} raidt met ${bestF.m.flask.toFixed(0)}% flask-dekking tegenover ${m.flask.toFixed(0)}% bij ${r.label} — zij komen simpelweg beter voorbereid binnen. Dit is het makkelijkst kopieerbare verschil.`,`Preparation: ${bestF.o.label} raids with ${bestF.m.flask.toFixed(0)}% flask coverage versus ${m.flask.toFixed(0)}% for ${r.label} — they simply show up better prepared. This is the easiest difference to copy.`));
+    else if(d>=15) t.push(L(`Voorbereiding: ${r.label} heeft de beste consumable-discipline (flask ${m.flask.toFixed(0)}% vs. ${bestF.m.flask.toFixed(0)}%).`,`Preparation: ${r.label} has the best consumable discipline (flask ${m.flask.toFixed(0)}% vs. ${bestF.m.flask.toFixed(0)}%).`));
+  }
+  const bestPot = otherM.filter(x=>x.m.potPP!=null).sort((a,b)=>b.m.potPP-a.m.potPP)[0];
+  if(m.potPP!=null && bestPot && bestPot.m.potPP - m.potPP >= 0.4) t.push(L(`Potions: bij ${bestPot.o.label} wordt vaker gepot (${bestPot.m.potPP.toFixed(1)} vs. ${m.potPP.toFixed(1)} per speler per boss) — gratis burst die ${r.label} laat liggen.`,`Potions: ${bestPot.o.label} pots more often (${bestPot.m.potPP.toFixed(1)} vs. ${m.potPP.toFixed(1)} per player per boss) — free burst that ${r.label} leaves on the table.`));
+
+  // tempo op gedeelde bosses
+  for(const {o} of otherM){
+    const shared = r.kills.filter(k=>o.kills.some(k2=>k2.name===k.name));
+    if(shared.length>=2){
+      const mine = shared.reduce((s,k)=>s+k.dur,0);
+      const theirs = shared.reduce((s,k)=>s+o.kills.find(k2=>k2.name===k.name).dur,0);
+      const d = (mine-theirs)/1000;
+      const slowest = shared.map(k=>({name:k.name, d:(k.dur-o.kills.find(k2=>k2.name===k.name).dur)/1000})).sort((a,b)=>b.d-a.d)[0];
+      if(d>45) t.push(L(`Tempo: over de ${shared.length} gedeelde bosses is ${r.label} in totaal ${Math.round(d)}s langzamer dan ${o.label}; het grootste gat zit op ${slowest.name} (+${Math.round(slowest.d)}s). Sneller killen = minder mechanics overleven — output en tactiek daar vergelijken loont het meest.`,`Pace: across the ${shared.length} shared bosses ${r.label} is ${Math.round(d)}s slower than ${o.label} in total; the biggest gap is on ${slowest.name} (+${Math.round(slowest.d)}s). Killing faster = surviving fewer mechanics — comparing output and tactics there pays off most.`));
+      else if(d<-45) t.push(L(`Tempo: ${r.label} kilt de ${shared.length} gedeelde bosses in totaal ${Math.round(-d)}s sneller dan ${o.label}.`,`Pace: ${r.label} kills the ${shared.length} shared bosses ${Math.round(-d)}s faster than ${o.label} in total.`));
+    }
+  }
+  // progressie: dezelfde spelers in meerdere logs (eigen guild over meerdere weken)
+  for(const {o} of otherM){
+    const shared = r.players.filter(p=>p.avgRank!=null && o.players.some(q=>q.name===p.name && q.avgRank!=null));
+    if(shared.length>=3){
+      const [older,newer] = r.start>o.start ? [o,r] : [r,o];
+      const delta = shared.map(p=>{
+        const a=older.players.find(q=>q.name===p.name), b=newer.players.find(q=>q.name===p.name);
+        return {name:p.name, d:b.avgRank-a.avgRank};
+      });
+      const ups = delta.filter(x=>x.d>=8).sort((a,b)=>b.d-a.d);
+      const downs = delta.filter(x=>x.d<=-8).sort((a,b)=>a.d-b.d);
+      const avgD = delta.reduce((s,x)=>s+x.d,0)/delta.length;
+      let msg = L(`Progressie: ${shared.length} dezelfde spelers in "${older.label}" en "${newer.label}" — gemiddelde parse ${avgD>=0?"+":""}${avgD.toFixed(0)} sinds de oudere log.`,`Progress: ${shared.length} of the same players in "${older.label}" and "${newer.label}" — average parse ${avgD>=0?"+":""}${avgD.toFixed(0)} since the older log.`);
+      if(ups.length) msg += L(` Grootste sprongen: ${ups.slice(0,3).map(x=>`${x.name} (+${x.d.toFixed(0)})`).join(", ")}.`,` Biggest jumps: ${ups.slice(0,3).map(x=>`${x.name} (+${x.d.toFixed(0)})`).join(", ")}.`);
+      if(downs.length) msg += L(` Terugval bij: ${downs.slice(0,3).map(x=>`${x.name} (${x.d.toFixed(0)})`).join(", ")} — check of daar een spec-wissel, nieuwe rol of gewoon een mindere avond achter zit.`,` Drop-offs: ${downs.slice(0,3).map(x=>`${x.name} (${x.d.toFixed(0)})`).join(", ")} — check whether a spec change, new role, or just an off night is behind it.`);
+      t.push(msg);
+    }
+  }
+  return t;
+}
+
+/* ============ advies-tab ============ */
+function renderAdvies(){
+  const el=$("tab-advies");
+  el.innerHTML = reportSelector("selAdvies") + `<div id="adviesInner"></div>`;
+  const draw = ()=>{
+    const r = state.analysed[+$("selAdvies").value];
+    let html = "";
+    if(state.analysed.length>1){
+      const ins = compareInsights(r, state.analysed);
+      html += `<div class="advies-alg"><h3>${L("⚖ Vergelijking tussen de logs","⚖ Comparison between the logs")}</h3>` +
+        compareTable(state.analysed) +
+        (ins.length?`<ul class="tips">${ins.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:"") +
+        `<p class="hint" style="margin-top:8px">${L(`De inzichten hierboven zijn geschreven vanuit het perspectief van de geselecteerde log (${esc(r.label)}).`,`The insights above are written from the perspective of the selected log (${esc(r.label)}).`)}</p></div>`;
+    }
+    html += `<div class="advies-alg"><h3>${L(`⚑ Algemeen raidadvies — ${esc(r.label)}`,`⚑ General raid advice — ${esc(r.label)}`)}</h3>
+      <ul class="tips">${overallAdvice(r).map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`;
+    if(r.bossStats && r.bossStats.length){
+      html += `<h3 style="font-family:Cinzel,serif;font-weight:600;font-size:15px;letter-spacing:.06em;color:var(--gold);margin:4px 0 10px">${L("Advies per boss","Advice per boss")}</h3>`;
+      // zorgenkindjes eerst
+      const sorted=[...r.bossStats].sort((a,b)=>(b.wipes-a.wipes)||((a.avgParse??100)-(b.avgParse??100)));
+      html += sorted.map(b=>`<div class="bossblock">
+        <h3>${esc(b.name)} <span class="small">${esc(b.diff)}</span>${bossBadge(b)}</h3>
+        <div class="bstats">
+          <span>${L("Kill:","Kill:")} <b>${fmtClock(b.dur)}</b></span>
+          <span>${L("Wipes:","Wipes:")} <b>${b.wipes}</b></span>
+          ${r.deaths && r.deaths.available?`<span>${L("Deaths:","Deaths:")} <b>${b.deaths}</b></span>`:""}
+          ${b.avgParse!=null?`<span>${L("Gem. teamparse:","Avg. team parse:")} <b style="color:${parseColor(b.avgParse)}">${b.avgParse.toFixed(0)}</b></span>`:""}
+        </div>
+        <ul class="tips">${bossAdvice(b, r, state.analysed).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+      </div>`).join("");
+    } else {
+      html += `<div class="empty">${L("Geen boss-kills gevonden in deze log.","No boss kills found in this log.")}</div>`;
+    }
+    $("adviesInner").innerHTML = html;
+  };
+  $("selAdvies").addEventListener("change",draw); draw();
+}
+
+/* ============ ludieke samenvatting ============ */
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function makeSummary(r){
+  const mvp = r.players[0];
+  const lepel = r.players.length>1 ? r.players[r.players.length-1] : null;
+  const fastest = [...r.kills].sort((a,b)=>a.dur-b.dur)[0];
+  const struggle = [...r.kills].sort((a,b)=>(b.wipes-a.wipes)||(b.dur-a.dur))[0];
+  const datum = new Date(r.start).toLocaleDateString(DLOC(),{weekday:"long",day:"numeric",month:"long"});
+
+  const openers = L([
+    `\uD83D\uDCDC Raidverslag \u2014 ${r.zone||r.title}, ${datum}\n\nZe kwamen, ze zagen, ze stonden ${Math.round(r.total/60000)} minuten in de fire.`,
+    `\uD83D\uDCDC Raidverslag \u2014 ${r.zone||r.title}, ${datum}\n\nNa ${fmtDur(r.total)} bloed, zweet en verdachte disconnects zit het erop.`,
+    `\uD83D\uDCDC Raidverslag \u2014 ${r.zone||r.title}, ${datum}\n\n${fmtDur(r.total)} aan content, waarvan naar schatting de helft trash en discussie over loot.`
+  ],[
+    `\uD83D\uDCDC Raid report \u2014 ${r.zone||r.title}, ${datum}\n\nThey came, they saw, they stood in the fire for ${Math.round(r.total/60000)} minutes.`,
+    `\uD83D\uDCDC Raid report \u2014 ${r.zone||r.title}, ${datum}\n\nAfter ${fmtDur(r.total)} of blood, sweat and suspicious disconnects, it's done.`,
+    `\uD83D\uDCDC Raid report \u2014 ${r.zone||r.title}, ${datum}\n\n${fmtDur(r.total)} of content, an estimated half of which was trash and arguing about loot.`
+  ]);
+  const lines=[pick(openers)];
+  lines.push(L(`\n\u2694\uFE0F Gevallen bosses: ${r.kills.length} \u2014 met ${r.wipesTotal} wipe${r.wipesTotal===1?"":"s"} als collateral damage.`,`\n\u2694\uFE0F Bosses felled: ${r.kills.length} \u2014 with ${r.wipesTotal} wipe${r.wipesTotal===1?"":"s"} as collateral damage.`));
+  if(fastest) lines.push(L(`\u26A1 Snelste kill: ${fastest.name} in ${fmtClock(fastest.dur)}. ${pick(["Die zag ons aankomen en gaf gewoon op.","Blizzard overweegt een refund voor die boss.","Speedrun-categorie: unlocked."])}`,`\u26A1 Fastest kill: ${fastest.name} in ${fmtClock(fastest.dur)}. ${pick(["That one saw us coming and just gave up.","Blizzard is considering a refund for that boss.","Speedrun category: unlocked."])}`));
+  if(struggle && struggle.wipes>0) lines.push(L(`\uD83E\uDE79 Zorgenkindje: ${struggle.name} (${struggle.wipes} wipe${struggle.wipes>1?"s":""}, kill in ${fmtClock(struggle.dur)}). ${pick(["De vloer bleek daar verrassend agressief.","Mechanics zijn ook maar een mening.","We noemen het 'progress'."])}`,`\uD83E\uDE79 Problem child: ${struggle.name} (${struggle.wipes} wipe${struggle.wipes>1?"s":""}, kill in ${fmtClock(struggle.dur)}). ${pick(["The floor turned out surprisingly aggressive there.","Mechanics are just an opinion, really.","We're calling it 'progress'."])}`));
+
+  /* \u2014 Het podium \u2014 */
+  const ranked = r.players.filter(p=>p.avgRank!=null);
+  if(ranked.length>=3){
+    const [g,s2,b] = ranked;
+    lines.push(L(`\n\uD83C\uDFC6 Het podium van de avond:`,`\n\uD83C\uDFC6 The podium of the night:`));
+    lines.push(L(`  \uD83E\uDD47 ${g.name} (${g.avgRank.toFixed(0)}) \u2014 ${pick(["handtekeningen na afloop in de Discord.","vermoedelijk gewoon goed, mogelijk verdacht goed.","carry gespot.","de rest speelde mee in zijn/haar verhaal."])}`,`  \uD83E\uDD47 ${g.name} (${g.avgRank.toFixed(0)}) \u2014 ${pick(["autographs in the Discord afterwards.","probably just good, possibly suspiciously good.","carry spotted.","everyone else was a supporting act."])}`));
+    lines.push(L(`  \uD83E\uDD48 ${s2.name} (${s2.avgRank.toFixed(0)}) \u2014 ${pick(["op een haar na legendarisch.","officieel 'ook heel goed'.","volgende week goud, dat voelen we.","zilver glimt ook, zeggen we er troostend bij."])}`,`  \uD83E\uDD48 ${s2.name} (${s2.avgRank.toFixed(0)}) \u2014 ${pick(["legendary by a hair.","officially 'also very good'.","gold next week, we can feel it.","silver shines too, we add consolingly."])}`));
+    lines.push(L(`  \uD83E\uDD49 ${b.name} (${b.avgRank.toFixed(0)}) \u2014 ${pick(["het brons wordt met trots gedragen.","stond er toen het moest.","completeert het podium met stijl."])}`,`  \uD83E\uDD49 ${b.name} (${b.avgRank.toFixed(0)}) \u2014 ${pick(["the bronze is worn with pride.","showed up when it mattered.","completes the podium in style."])}`));
+  } else if(mvp){
+    lines.push(L(`\uD83C\uDFC6 MVP: ${mvp.name} met een gemiddelde parse van ${mvp.avgRank.toFixed(0)}. ${pick(["Handtekeningen na afloop in de Discord.","Vermoedelijk gewoon goed, mogelijk verdacht goed.","Carry gespot."])}`,`\uD83C\uDFC6 MVP: ${mvp.name} with an average parse of ${mvp.avgRank.toFixed(0)}. ${pick(["Autographs in the Discord afterwards.","Probably just good, possibly suspiciously good.","Carry spotted."])}`));
+  }
+
+  /* \u2014 Beste healer \u2014 */
+  const podiumNames = ranked.slice(0,3).map(p=>p.name);
+  const topHealer = ranked.find(p=>p.role==="healers");
+  if(topHealer && !podiumNames.includes(topHealer.name)){
+    lines.push(L(`\uD83D\uDC9A Herder van de kudde: ${topHealer.name} (healing-parse ${topHealer.avgRank.toFixed(0)}). ${pick(["Hield iedereen overeind, inclusief de fire-standers.","Mana is een illusie, bleek vanavond.","Zonder deze held was het dodenboek twee keer zo dik."])}`,`\uD83D\uDC9A Shepherd of the flock: ${topHealer.name} (healing parse ${topHealer.avgRank.toFixed(0)}). ${pick(["Kept everyone upright, including the fire-standers.","Mana is an illusion, it turned out tonight.","Without this hero the death book would be twice as thick."])}`));
+  }
+
+  /* \u2014 Uitschieter \u2014 */
+  let bestSingle=null;
+  for(const p of ranked){ for(const b of (p.bossAvgs||[])){ if(b.rank!=null && (!bestSingle || b.rank>bestSingle.rank)) bestSingle={name:p.name, boss:b.boss, rank:b.rank}; } }
+  if(bestSingle && bestSingle.rank>=(mvp?.avgRank??0)){
+    lines.push(L(`\uD83C\uDF1F Uitschieter: ${bestSingle.name} parste ${bestSingle.rank.toFixed(0)} op ${bestSingle.boss}. ${pick(["E\u00e9n moment van glorie, voor altijd in de logs.","Dat frame je in.","De boss wist niet wat hem overkwam."])}`,`\uD83C\uDF1F Standout: ${bestSingle.name} parsed ${bestSingle.rank.toFixed(0)} on ${bestSingle.boss}. ${pick(["One moment of glory, forever in the logs.","Frame that one.","The boss never knew what hit it."])}`));
+  }
+
+  /* \u2014 Het dodenboek \u2014 */
+  if(r.deaths && r.deaths.available && r.deaths.total>0){
+    const dlist = Object.values(r.deaths.byPlayer).sort((a,b)=>b.count-a.count);
+    const pech = dlist[0];
+    lines.push(L(`\n\uD83D\uDC80 Het dodenboek telt ${r.deaths.total} bladzijde${r.deaths.total===1?"":"s"}.`,`\n\uD83D\uDC80 The death book counts ${r.deaths.total} page${r.deaths.total===1?"":"s"}.`));
+    if(pech && pech.count>1){
+      lines.push(L(`\u26B0\uFE0F Vaste klant bij de geestgenezer: ${pech.name} (${pech.count}\u00d7 gevallen). ${pick(["De repair-NPC kent de voornaam inmiddels.","Sterven is ook een vorm van aanwezigheid.","De vloer en deze held: een liefdesverhaal.","Elke death was ongetwijfeld 'lag'."])}`,`\u26B0\uFE0F Regular at the spirit healer: ${pech.name} (fell ${pech.count}\u00d7). ${pick(["The repair NPC knows them by first name now.","Dying is also a form of attendance.","The floor and this hero: a love story.","Every death was undoubtedly 'lag'."])}`));
+    }
+    const diedNames = new Set(dlist.map(d=>d.name));
+    const survivors = r.players.filter(p=>!diedNames.has(p.name)).map(p=>p.name);
+    if(survivors.length && survivors.length<=5){
+      lines.push(L(`\uD83D\uDEE1\uFE0F Ongeschonden de taveerne in: ${survivors.join(", ")}. ${pick(["Nul deaths, nul repair bill, honderd procent stijl.","De grond werd niet \u00e9\u00e9n keer van dichtbij bekeken.","Verdacht goed voetenwerk."])}`,`\uD83D\uDEE1\uFE0F Walked into the tavern unscathed: ${survivors.join(", ")}. ${pick(["Zero deaths, zero repair bill, one hundred percent style.","The ground was not inspected up close even once.","Suspiciously good footwork."])}`));
+    } else if(survivors.length>5){
+      lines.push(L(`\uD83D\uDEE1\uFE0F ${survivors.length} helden bleven de hele avond overeind \u2014 de geestgenezer verveelde zich bijna.`,`\uD83D\uDEE1\uFE0F ${survivors.length} heroes stayed upright all night \u2014 the spirit healer was almost bored.`));
+    }
+    if(r.deaths.topAbility && r.deaths.topAbility.count>1){
+      lines.push(L(`\u2620\uFE0F Grootste sluipmoordenaar: ${r.deaths.topAbility.name} (${r.deaths.topAbility.count} slachtoffers). ${pick(["Misschien... niet in gaan staan?","De mechanic won vanavond op punten.","Volgende week doen we alsof we die zien aankomen."])}`,`\u2620\uFE0F Biggest assassin: ${r.deaths.topAbility.name} (${r.deaths.topAbility.count} victims). ${pick(["Maybe... don't stand in it?","The mechanic won on points tonight.","Next week we'll pretend we see it coming."])}`));
+    }
+  }
+
+  /* \u2014 Houten lepel \u2014 */
+  if(lepel && lepel.avgRank!=null && lepel.name!==mvp?.name && !podiumNames.includes(lepel.name)){
+    lines.push(L(`\n\uD83E\uDD44 Houten lepel: ${lepel.name} (parse ${lepel.avgRank.toFixed(0)}). ${pick(["Volgende week revanche, we geloven erin.","De keybinds worden momenteel teruggevonden.","Iemand moet de fire testen, en dat waardeert de raid."])}`,`\n\uD83E\uDD44 Wooden spoon: ${lepel.name} (parse ${lepel.avgRank.toFixed(0)}). ${pick(["Rematch next week, we believe in it.","The keybinds are currently being located.","Someone has to test the fire, and the raid appreciates it."])}`));
+  }
+  lines.push(L(`\n${pick(["Zelfde tijd, zelfde plek, zelfde excuses \u2014 tot volgende reset! \uD83C\uDF7B","Repair bill declareren bij de guildbank. Tot volgende week! \uD83C\uDF7B","Loot verdeeld, vriendschappen beschadigd, missie geslaagd. \uD83C\uDF7B"])}`,`\n${pick(["Same time, same place, same excuses \u2014 until next reset! \uD83C\uDF7B","Filing the repair bill with the guild bank. See you next week! \uD83C\uDF7B","Loot distributed, friendships damaged, mission accomplished. \uD83C\uDF7B"])}`));
+  return lines.join("\n");
+}
+function renderVerhaal(){
+  const el=$("tab-verhaal");
+  el.innerHTML = reportSelector("selVerhaal") + `<div id="verhaalInner"></div>
+    <div class="row"><button id="btnNieuw" class="secondary">${L("🎲 Nieuwe variant","🎲 New variant")}</button><button id="btnKopie">${L("📋 Kopieer voor de Discord","📋 Copy for Discord")}</button></div>
+    <span class="status" id="kopieStatus"></span>`;
+  const draw = ()=>{
+    const r = state.analysed[+$("selVerhaal").value];
+    $("verhaalInner").innerHTML = `<div class="summarybox" id="summaryText">${esc(makeSummary(r))}</div>`;
+  };
+  $("selVerhaal").addEventListener("change",draw);
+  el.querySelector("#btnNieuw").addEventListener("click",draw);
+  el.querySelector("#btnKopie").addEventListener("click",async ()=>{
+    try{
+      await navigator.clipboard.writeText($("summaryText").textContent);
+      $("kopieStatus").textContent=L("✓ Gekopieerd","✓ Copied"); $("kopieStatus").className="status ok";
+    }catch{ $("kopieStatus").textContent=L("Kopiëren geblokkeerd — selecteer de tekst handmatig.","Copying blocked — select the text manually."); $("kopieStatus").className="status err"; }
+  });
+  draw();
+}
+</script>
+</body>
+</html>
